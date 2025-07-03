@@ -1,0 +1,182 @@
+.product-list-container {
+  padding: 40px 20px;
+  max-width: 1400px;
+  margin: 0 auto;
+ 
+}
+
+.section-title {
+  font-size: 2.5rem;
+  font-weight: bold;
+  margin-bottom: 40px;
+  color: #5a3921; /* Dark brown */
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  font-family: 'Times New Roman', serif;
+  position: relative;
+}
+
+.section-title:after {
+  content: "";
+  display: block;
+  width: 150px;
+  height: 3px;
+  background: #c9a66b; /* Gold */
+  margin: 15px auto;
+}
+
+.product-card {
+  background-color: #fff9f0; /* Creamy white */
+  border-radius: 4px;
+  overflow: hidden;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  height: 100%;
+  position: relative;
+  transition: all 0.3s ease;
+  margin-bottom: 20px;
+  border: 1px solid #e0d5c3; /* Light brown border */
+  font-family: 'Georgia', serif;
+}
+
+.product-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+}
+
+.product-tag {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  background-color: #8b5a2b; /* Brown */
+  color: #f8f5f0;
+  padding: 6px 15px;
+  border-radius: 0;
+  font-size: 0.9rem;
+  font-weight: bold;
+  z-index: 2;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+  font-family: 'Courier New', monospace;
+  letter-spacing: 1px;
+  border: 1px dashed #c9a66b; /* Gold dashed border */
+}
+
+.product-image-container {
+  width: 100%;
+  height: 220px;
+  overflow: hidden;
+  border-bottom: 3px solid #e0d5c3;
+}
+
+.product-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.5s ease;
+  filter: sepia(30%) contrast(110%);
+}
+
+.product-card:hover .product-image {
+  transform: scale(1.05);
+  filter: sepia(20%) contrast(120%);
+}
+
+.product-info {
+  padding: 20px 15px 25px;
+  background: linear-gradient(to bottom, #fff9f0, #f8f5f0);
+}
+
+.product-name {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin-bottom: 12px;
+  color: #5a3921;
+  line-height: 1.3;
+  font-family: 'Times New Roman', serif;
+  letter-spacing: 0.5px;
+}
+
+.product-description {
+  font-size: 0.95rem;
+  color: #7a6a5a; /* Muted brown */
+  margin-bottom: 15px;
+  min-height: 20px;
+  line-height: 1.4;
+  font-style: italic;
+}
+
+.product-price {
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: #8b5a2b; /* Brown */
+  margin-bottom: 0;
+  font-family: 'Courier New', monospace;
+}
+
+.btn-add-to-cart {
+  background-color: #c9a66b; /* Gold */
+  color: #5a3921; /* Dark brown */
+  border: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  font-family: 'Georgia', serif;
+  border: 1px solid #8b5a2b;
+}
+
+.btn-add-to-cart:hover {
+  background-color: #b8934b;
+  transform: scale(1.1);
+  box-shadow: 0 3px 6px rgba(0,0,0,0.2);
+}
+
+.btn-add-to-cart:active {
+  transform: scale(0.95);
+}
+
+/* Vintage paper texture overlay */
+.product-card:before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="none" stroke="%23e0d5c3" stroke-width="0.5" stroke-dasharray="1,3"/></svg>');
+  opacity: 0.2;
+  pointer-events: none;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1199px) {
+  .product-image-container {
+    height: 200px;
+  }
+}
+
+@media (max-width: 991px) {
+  .product-image-container {
+    height: 180px;
+  }
+}
+
+@media (max-width: 767px) {
+  .section-title {
+    font-size: 2rem;
+    margin-bottom: 30px;
+  }
+  
+  .product-image-container {
+    height: 160px;
+  }
+  
+  .product-name {
+    font-size: 1.1rem;
+  }
+}
