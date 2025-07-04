@@ -15,12 +15,12 @@ const ProductCard = ({ product, onAddToCart, onClick }) => {
         <div className="product-image-container">
           <img
             src={product.image.startsWith('../') ? product.image.substring(2) : product.image}
-            alt={product.name}
+            alt={product.productName}
             className="product-image"
           />
         </div>
         <div className="product-info">
-          <h3 className="product-name">{product.name}</h3>
+          <h3 className="product-name">{product.productName}</h3>
           <p className="product-description">{product.description}</p>
           <div className="d-flex justify-content-between align-items-center">
             <p className="product-price mb-0">{formatPrice(product.price)}</p>
@@ -28,7 +28,7 @@ const ProductCard = ({ product, onAddToCart, onClick }) => {
               className="btn-add-to-cart"
               onClick={(e) => {
                 e.stopPropagation();
-                onAddToCart(product.id, e);
+                onAddToCart(product.productId, e);
               }}
             >
               <FaPlus />

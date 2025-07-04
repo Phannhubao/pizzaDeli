@@ -1,8 +1,9 @@
 import React from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
 import Banner from '../component/Banner'; 
-import ProductList from '../component/ProductList';  
+
 import Menu from '../component/Menu';
+import AllProduct from "./AlProduct";
 function Home() {
   return (
    <div className="container-fluid">
@@ -12,7 +13,7 @@ function Home() {
    <Menu/>
    <br></br>
    <br></br>
-   <ProductList/>
+  <AllProduct></AllProduct>
    </div>
   );
 }

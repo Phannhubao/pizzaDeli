@@ -1,23 +1,40 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
+import axios from "axios";
+import { useNavigate } from "react-router-dom";
 import "../css/menu.css";
 
 const Menu = () => {
-  const items = [
-    { title: "Bánh pizza", imgSrc: "img/pizza1.webp" },
-    { title: "Khai vị", imgSrc: "img/khaivi1.webp" },
-    { title: "Salad", imgSrc: "img/salad1.webp" },
-    { title: "Mì ý", imgSrc: "img/miy1.webp" },
-    { title: "Thức uống", imgSrc: "img/nuoc1.webp" },
-    { title: "Tráng miệng", imgSrc: "img/trangmieng1.webp" },
-  ];
+  const [categories, setCategories] = useState([]);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    axios.get("http://localhost:8080/api/categories")
+      .then((response) => {
+        console.log("API Data:", response.data);
+        const data = response.data.data || response.data;
+        setCategories(Array.isArray(data) ? data : []);
+      })
+      .catch((error) => {
+        console.error("Error fetching categories:", error);
+      });
+  }, []);
+
+  const handleCategoryClick = (categoryId) => {
+    // Chuyển đến trang sản phẩm với categoryId
+    navigate(`/products?categoryId=${categoryId}`);
+  };
 
   return (
     <div className="container text-center menu1">
       <div className="row">
-        {items.map((item, index) => (
-          <div className="col" key={index}>
-            <img src={item.imgSrc} alt={item.title} className="menu-icon" />
-            <div className="menu-title">{item.title}</div>
+        {categories.map((category) => (
+          <div 
+            className="col" 
+            key={category.categoryId}
+            onClick={() => handleCategoryClick(category.categoryId)}
+            style={{ cursor: "pointer" }} // Thêm hiệu ứng con trỏ
+          >
+            <div className="menu-title">{category.categoryName}</div>
           </div>
         ))}
       </div>
