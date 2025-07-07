@@ -3,7 +3,7 @@ import "bootstrap/dist/css/bootstrap.min.css";
 import Banner from '../component/Banner'; 
 
 import Menu from '../component/Menu';
-import AllProduct from "./AlProduct";
+import AllProduct from "./AllProduct";
 function Home() {
   return (
    <div className="container-fluid">
