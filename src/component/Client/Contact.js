@@ -1,6 +1,6 @@
 import React from 'react';
 import { FaMapMarkerAlt, FaPhone, FaEnvelope, FaClock, FaPaperPlane } from 'react-icons/fa';
-import '../css/contact.css';
+import '../../css/contact.css';
 
 const ContactPage = () => {
   const handleSubmit = (e) => {

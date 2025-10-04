@@ -1,6 +1,6 @@
 import React from 'react';
 import {   FaStore } from 'react-icons/fa';
-import '../css/about.css';
+import '../../css/about.css';
 
 const About = () => {
   return (
