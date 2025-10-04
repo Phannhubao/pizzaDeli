@@ -8,7 +8,7 @@ const Menu = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    axios.get("https://deli-api.onrender.com")
+    axios.get("https://pizzadelife.onrender.com/api/categories")
       .then((response) => {
         console.log("API Data:", response.data);
         const data = response.data.data || response.data;
