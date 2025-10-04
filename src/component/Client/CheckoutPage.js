@@ -708,7 +708,7 @@ const CheckoutPage = () => {
   });
 
   const [paymentMethod, setPaymentMethod] = useState("COD");
-  const Domain = process.env.REACT_APP_API_URL || "http://localhost:8080";
+  const Domain = process.env.REACT_APP_API_URL || "https://deli-api.onrender.com";
 
   // Thông tin VNPay (có thể lưu trong .env)
   const vnpayConfig = {
