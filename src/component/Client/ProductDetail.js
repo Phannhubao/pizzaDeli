@@ -4,6 +4,7 @@ import { FaArrowLeft, FaPlus, FaMinus } from "react-icons/fa";
 import axios from "axios";
 import "../../css/detail.css";
 import Swal from "sweetalert2";
+import { Domain } from "../../services/Domain";
 
 const ProductDetail = () => {
   const { id } = useParams();
@@ -18,10 +19,10 @@ const ProductDetail = () => {
     const fetchProduct = async () => {
       try {
         setIsLoading(true);
-        const response = await axios.get(`http://localhost:8080/api/products/${id}`);
+        const response = await axios.get(`${Domain}/api/products/${id}`);
         
         // Fetch image separately
-        const imageResponse = await axios.get(`http://localhost:8080/api/images/product/${id}`);
+        const imageResponse = await axios.get(`${Domain}/api/images/product/${id}`);
         const imageUrl = imageResponse.data?.[0]?.imageUrl || "img/default-product.png";
         
         setProduct({

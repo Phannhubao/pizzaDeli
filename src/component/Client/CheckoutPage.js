@@ -67,6 +67,7 @@ const CheckoutPage = () => {
             quantity: item.quantity || 1
           }));
           setCartItems(cartWithQuantity);
+        
         } else {
           navigate("/cart");
         }
@@ -117,7 +118,7 @@ const CheckoutPage = () => {
     const signData = new URLSearchParams(sortedParams).toString();
     return CryptoJS.HmacSHA512(signData, secretKey).toString();
   };
-
+  console.log(orderId);
   const handleCheckout = async () => {
     if (!validateForm()) return;
     const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
