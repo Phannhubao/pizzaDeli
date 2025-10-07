@@ -32,8 +32,8 @@ const RegisterPage = () => {
     }
   };
 
-  // Validate dữ liệu nhập
-  const validateForm = () => {
+  // Validate dữ liệu nhập (dùng useCallback để ổn định)
+  const validateForm = useCallback(() => {
     const newErrors = {};
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/;
@@ -56,7 +56,7 @@ const RegisterPage = () => {
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
-  };
+  }, [formData]);
 
   // Xử lý submit
   const handleSubmit = useCallback(
@@ -70,7 +70,7 @@ const RegisterPage = () => {
           name: formData.name,
           email: formData.email,
           address: formData.address,
-           birthDate: formData.birthDate,
+          birthDate: formData.birthDate,
           password: formData.password,
           status: "ACTIVE",
           role: "CUSTOMER", // mặc định
@@ -118,7 +118,7 @@ const RegisterPage = () => {
         setLoading(false);
       }
     },
-    [formData, navigate]
+    [formData, navigate, validateForm]
   );
 
   return (
