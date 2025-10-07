@@ -3,7 +3,7 @@ import "../../css/dataTables.bootstrap5.min.css";
 import "../../AdminManager.css";
 import "./OrderManager.css";
 import { useEffect, useState, useCallback } from "react";
-import { GetAllOrders, PutOrderStatus } from "../../../../../services/ApiService";
+import { GetAllOrders, PutOrderStatus, GetPaymentList } from "../../../../../services/ApiService";
 import { Icon } from "@mui/material";
 import Swal from "sweetalert2";
 import ReactPaginate from "react-paginate";
@@ -18,29 +18,39 @@ export default function OrderManager() {
   const [itemsPerPage] = useState(12);
   const [refresh, setRefresh] = useState(false);
 
-  // Hàm fetch dữ liệu đơn hàng
+  // fetch orders + payment status
   const fetchOrders = useCallback(async () => {
     try {
       const response = await GetAllOrders();
-      let ordersData = [];
-      if (response.status === 200) {
-        if (Array.isArray(response.data)) {
-          ordersData = response.data;
-        } else if (Array.isArray(response.data?.data)) {
-          ordersData = response.data.data;
-        }
-      }
-      // Chuẩn hóa và lọc dữ liệu
-      ordersData = ordersData
-        .map((order) => ({
+      let ordersData = Array.isArray(response)
+        ? response
+        : response?.content || response?.data || [];
+
+      // lấy danh sách payment
+      const paymentResponse = await GetPaymentList();
+      const paymentList = Array.isArray(paymentResponse.data)
+        ? paymentResponse.data
+        : [];
+
+      const ordersWithPayment = ordersData.map((order) => {
+        const orderId = order.id || order.orderId;
+
+        // lọc payment theo orderId
+        const payments = paymentList.filter((p) => p.orderId === orderId);
+
+        // nếu có ít nhất 1 payment.status === true => đã thanh toán
+        const hasPaid = payments.some((p) => p.status === true);
+
+        return {
           ...order,
-          id: order.id || order.orderId, // Fallback to orderId if id is missing
-        }))
-        .filter((order) => order.id && !isNaN(Number(order.id))); // Loại bỏ đơn hàng có id không hợp lệ
-      console.log("Filtered Orders Data:", ordersData); // Debug log
-      setOrders(ordersData);
-      setFilteredOrders(ordersData);
-      setTotalOrders(ordersData.length);
+          id: orderId,
+          paymentStatus: hasPaid ? "Đã thanh toán online" : "Chưa thanh toán(Ship code)",
+        };
+      });
+
+      setOrders(ordersWithPayment);
+      setFilteredOrders(ordersWithPayment);
+      setTotalOrders(ordersWithPayment.length);
     } catch (error) {
       console.error("Lỗi khi lấy danh sách đơn hàng:", error);
       setOrders([]);
@@ -54,12 +64,11 @@ export default function OrderManager() {
     }
   }, []);
 
-  // Gọi API khi component mount hoặc khi refresh thay đổi
   useEffect(() => {
     fetchOrders();
   }, [fetchOrders, refresh]);
 
-  // Lọc đơn hàng theo tên người đặt hoặc trạng thái
+  // filter orders
   useEffect(() => {
     let filtered = orders;
     if (searchTerm) {
@@ -72,78 +81,53 @@ export default function OrderManager() {
     }
     setFilteredOrders(filtered);
     setTotalOrders(filtered.length);
-    setCurrentPage(0); // Reset về trang đầu khi lọc
+    setCurrentPage(0);
   }, [searchTerm, statusFilter, orders]);
 
-  // Định dạng trạng thái
   const getStatusClass = (status) => {
     switch (status) {
-      case "PROCESSING":
-        return "status-processing";
-      case "PENDING":
-        return "status-pending";
-      case "COMPLETED":
-        return "status-completed";
-      case "CANCELLED":
-        return "status-cancelled";
-      default:
-        return "status-unknown";
+      case "PROCESSING": return "status-processing";
+      case "PENDING": return "status-pending";
+      case "COMPLETED": return "status-completed";
+      case "CANCELLED": return "status-cancelled";
+      default: return "status-unknown";
     }
   };
 
-  // Định dạng tiền tệ theo chuẩn Việt Nam
-  const formatCurrency = (amount) => {
-    return amount ? amount.toLocaleString("vi-VN") + " ₫" : "0 ₫";
-  };
+  const formatCurrency = (amount) =>
+    amount ? amount.toLocaleString("vi-VN") + " ₫" : "0 ₫";
 
-  // Xử lý thay đổi trạng thái đơn hàng
   const handleStatusChange = async (orderId, newStatus) => {
-    if (!orderId || orderId === "undefined" || isNaN(Number(orderId))) {
-      Swal.fire({
+    if (!orderId || isNaN(Number(orderId))) {
+      return Swal.fire({
         icon: "error",
         title: "Lỗi",
         text: "ID đơn hàng không hợp lệ",
       });
-      return;
-    }
-
-    const currentOrder = orders.find((order) => order.id === orderId);
-    if (!currentOrder) {
-      Swal.fire({
-        icon: "error",
-        title: "Lỗi",
-        text: "Không tìm thấy đơn hàng",
-      });
-      return;
     }
 
     const result = await Swal.fire({
       title: "Xác nhận thay đổi",
-      text: `Bạn có chắc chắn muốn thay đổi trạng thái đơn hàng thành "${newStatus}"?`,
+      text: `Bạn có chắc chắn muốn đổi trạng thái thành "${newStatus}"?`,
       icon: "question",
       showCancelButton: true,
-      confirmButtonColor: "#3085d6",
-      cancelButtonColor: "#d33",
       confirmButtonText: "Đồng ý",
       cancelButtonText: "Hủy",
     });
 
     if (result.isConfirmed) {
       try {
-        const numericId = Number(orderId); // Chuyển đổi sang số
-        const response = await PutOrderStatus(numericId, newStatus); // Gửi status dưới dạng chuỗi
-        if (response.status === 200) {
-          setRefresh(!refresh); // Tải lại dữ liệu
-          Swal.fire({
-            icon: "success",
-            title: "Thành công",
-            text: "Đã cập nhật trạng thái đơn hàng",
-            timer: 1500,
-            showConfirmButton: false,
-          });
-        }
+        await PutOrderStatus(Number(orderId), newStatus);
+        setRefresh(!refresh);
+        Swal.fire({
+          icon: "success",
+          title: "Thành công",
+          text: "Đã cập nhật trạng thái đơn hàng",
+          timer: 1500,
+          showConfirmButton: false,
+        });
       } catch (error) {
-        console.error("Lỗi khi cập nhật trạng thái đơn hàng:", error);
+        console.error("Lỗi cập nhật trạng thái:", error);
         Swal.fire({
           icon: "error",
           title: "Lỗi",
@@ -153,10 +137,7 @@ export default function OrderManager() {
     }
   };
 
-  // Phân trang
-  const handlePageClick = ({ selected }) => {
-    setCurrentPage(selected);
-  };
+  const handlePageClick = ({ selected }) => setCurrentPage(selected);
 
   const offset = currentPage * itemsPerPage;
   const paginatedOrders = filteredOrders.slice(offset, offset + itemsPerPage);
@@ -169,10 +150,10 @@ export default function OrderManager() {
         <div className="header d-flex align-items-center justify-content-between mb-4">
           <div className="text-secondary">Tổng: {totalOrders} đơn hàng</div>
           <h2 className="text-center font-weight-bold mb-0">QUẢN LÝ ĐƠN HÀNG</h2>
-          <div></div> {/* Placeholder để cân đối layout */}
+          <div></div>
         </div>
 
-        {/* Search bar */}
+        {/* Search + Filter */}
         <div className="search-container mb-4">
           <input
             type="text"
@@ -194,7 +175,7 @@ export default function OrderManager() {
           </select>
         </div>
 
-        {/* Bảng đơn hàng */}
+        {/* Table */}
         <div className="table-responsive" style={{ minHeight: "600px" }}>
           <table className="table table-hover">
             <thead className="table-dark">
@@ -204,6 +185,7 @@ export default function OrderManager() {
                 <th>Ngày đặt</th>
                 <th>Tổng tiền</th>
                 <th>Trạng thái</th>
+                <th>Thanh toán</th>
                 <th>Thay đổi trạng thái</th>
               </tr>
             </thead>
@@ -220,17 +202,24 @@ export default function OrderManager() {
                     </td>
                     <td>{formatCurrency(item.totalPrice)}</td>
                     <td>
-                      <span
-                        className={`status-badge ${getStatusClass(item.status)}`}
-                      >
+                      <span className={`status-badge ${getStatusClass(item.status)}`}>
                         {item.status || "Unknown"}
                       </span>
                     </td>
                     <td>
-                      {item.status === "COMPLETED" || item.status === "CANCELLED" ? (
-                        <span
-                          className={`status-badge ${getStatusClass(item.status)}`}
-                        >
+                      {item.paymentStatus === "Đã thanh toán" ? (
+                        <span className="status-badge status-completed">
+                          {item.paymentStatus}
+                        </span>
+                      ) : (
+                        <span className="status-badge status-pending">
+                          {item.paymentStatus}
+                        </span>
+                      )}
+                    </td>
+                    <td>
+                      {["COMPLETED", "CANCELLED"].includes(item.status) ? (
+                        <span className={`status-badge ${getStatusClass(item.status)}`}>
                           {item.status}
                         </span>
                       ) : (
@@ -250,7 +239,7 @@ export default function OrderManager() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={6} className="text-center py-4 text-muted">
+                  <td colSpan={7} className="text-center py-4 text-muted">
                     <div className="no-orders-content">
                       <Icon className="no-orders-icon">shopping_cart</Icon>
                       <p>Không có đơn hàng nào</p>
@@ -262,7 +251,7 @@ export default function OrderManager() {
           </table>
         </div>
 
-        {/* Phân trang */}
+        {/* Pagination */}
         {pageCount > 1 && (
           <div className="pagination-container d-flex justify-content-center mt-4">
             <ReactPaginate

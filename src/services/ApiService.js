@@ -89,8 +89,12 @@ async function PostCategory(data) {
 async function GetAllOrders() {
   return (await axios.get(`${Domain}/api/Order/GetOrderList`)).data;
 }
+// async function GetOrdersByUserID(userId) {
+//   return (await axios.get(`${Domain}/api/Order/GetOrderListByUserId/${userId}`)).data;
+// }
 async function GetOrdersByUserID(userId) {
-  return (await axios.get(`${Domain}/api/Order/GetOrderListByUserId/${userId}`)).data;
+  const res = await axios.get(`${Domain}/api/Order/GetOrderListByUserId/${userId}`);
+  return Array.isArray(res.data?.data) ? res.data.data : [];  
 }
 async function GetOrderByID(orderId) {
   return (await axios.get(`${Domain}/api/Order/GetOrder/${orderId}`)).data;
