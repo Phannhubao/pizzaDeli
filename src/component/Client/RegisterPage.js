@@ -36,8 +36,8 @@ const RegisterPage = () => {
   const validateForm = useCallback(() => {
     const newErrors = {};
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/;
-
+    // const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/;
+    const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[!@#$%^&*])[A-Za-z\d!@#$%^&*]{8,}$/;
     if (!formData.name.trim()) newErrors.name = "Vui lòng nhập họ tên";
     if (!formData.email.trim()) newErrors.email = "Vui lòng nhập email";
     else if (!emailRegex.test(formData.email)) newErrors.email = "Email không hợp lệ";
@@ -48,7 +48,7 @@ const RegisterPage = () => {
 
     if (!formData.password.trim()) newErrors.password = "Vui lòng nhập mật khẩu";
     else if (!passwordRegex.test(formData.password))
-      newErrors.password = "Mật khẩu tối thiểu 8 ký tự, có chữ và số";
+      newErrors.password = "Mật khẩu tối thiểu 8 ký tự, có chữ , số và ký tự đặc biệt";
 
     if (formData.password !== formData.confirmPassword) {
       newErrors.confirmPassword = "Mật khẩu không khớp";
@@ -101,18 +101,18 @@ const RegisterPage = () => {
 
           setTimeout(() => navigate("/login"), 2000);
         } else {
-          throw new Error(`Lỗi đăng ký: ${response.status}`);
+          throw new Error(`Email đã được sử dụng`);
         }
       } catch (err) {
-        console.error("❌ Lỗi:", err.response || err);
-        const errorMessage =
-          err.response?.data?.message ||
-          err.message ||
-          "Đăng ký thất bại, vui lòng thử lại!";
+        console.error("Email đã được sử dụng");
+        // const errorMessage =
+        //   err.response?.data?.message ||
+        //   err.message ||
+        //   "Đăng ký thất bại, vui lòng thử lại!";
         Swal.fire({
           icon: "error",
           title: "Lỗi",
-          text: errorMessage,
+          text: "Email đã được sử dụng",
         });
       } finally {
         setLoading(false);
