@@ -4,7 +4,7 @@ import { FaArrowLeft, FaShoppingCart, FaUser, FaMapMarkerAlt, FaCreditCard, FaSp
 import axios from "axios";
 import CryptoJS from "crypto-js";
 import '../../css/checkout.css'
-
+import Swal from "sweetalert2"; 
 // Hàm format datetime theo chuẩn VNPay (yyyyMMddHHmmss, GMT+7)
 const formatDateVN = (date) => {
   const tzOffset = 7 * 60 * 60000; // GMT+7
@@ -200,6 +200,25 @@ const CheckoutPage = () => {
   };
 
   const handleCheckout = async () => {
+
+    const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
+    if (!currentUser || !currentUser.token) {
+    Swal.fire({
+      icon: "warning",
+      title: "Bạn chưa đăng nhập!",
+      text: "Vui lòng đăng nhập để tiếp tục đặt hàng.",
+      confirmButtonText: "Đăng nhập ngay",
+      confirmButtonColor: "#3085d6",
+      showCancelButton: true,
+      cancelButtonText: "Hủy",
+      cancelButtonColor: "#d33",
+    }).then((result) => {
+      if (result.isConfirmed) {
+        navigate("/login");
+      }
+    });
+    return;
+  }
     if (!validateForm()) return;
     setLoading(true);
 
