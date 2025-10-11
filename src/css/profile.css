@@ -1,0 +1,384 @@
+/* ProfilePage.css */
+.profile-container {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Profile Card Styles */
+.profile-card {
+  border: none;
+  border-radius: 15px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.profile-card .card-body {
+  border-radius: 15px;
+}
+
+.profile-header .profile-avatar {
+  font-size: 80px;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.profile-name {
+  font-weight: 600;
+  margin-bottom: 5px;
+}
+
+.profile-badge {
+  background: rgba(255, 255, 255, 0.2);
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.profile-info .info-item {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 20px;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  transition: all 0.3s ease;
+}
+
+.profile-info .info-item:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: translateX(5px);
+}
+
+.profile-info .info-item i {
+  font-size: 18px;
+  margin-right: 15px;
+  margin-top: 2px;
+  width: 20px;
+  text-align: center;
+}
+
+.profile-info .info-item label {
+  font-size: 12px;
+  opacity: 0.8;
+  margin-bottom: 2px;
+  display: block;
+}
+
+.profile-info .info-item p {
+  margin: 0;
+  font-weight: 500;
+}
+
+.status.active {
+  color: #4CAF50;
+}
+
+.status.inactive {
+  color: #f44336;
+}
+
+/* Orders Card Styles */
+.orders-card {
+  border: none;
+  border-radius: 15px;
+}
+
+.orders-title {
+  color: #2c3e50;
+  font-weight: 600;
+}
+
+.orders-count {
+  font-size: 14px;
+  padding: 8px 16px;
+  border-radius: 20px;
+}
+
+/* Table Styles */
+.orders-table {
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.table-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.table-header th {
+  border: none;
+  padding: 15px 12px;
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.order-row {
+  transition: all 0.3s ease;
+  border-bottom: 1px solid #f8f9fa;
+}
+
+.order-row:hover {
+  background-color: #f8f9fa;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.order-id {
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.order-date {
+  color: #6c757d;
+  font-size: 13px;
+}
+
+.order-address {
+  max-width: 200px;
+}
+
+.order-image {
+  width: 50px;
+  height: 50px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 2px solid #e9ecef;
+}
+
+/* Status Badges */
+.status-badge {
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+.status-badge.processing {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.status-badge.completed {
+  background: #d1edff;
+  color: #0c5460;
+}
+
+.status-badge.delivered {
+  background: #d4edda;
+  color: #155724;
+}
+
+.status-badge.cancelled {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+.status-badge.pending {
+  background: #fff3cd;
+  color: #856404;
+}
+
+/* Button Styles */
+.edit-btn, .save-btn {
+  border: none;
+  border-radius: 25px;
+  padding: 12px 24px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.edit-btn {
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.edit-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: translateY(-2px);
+}
+
+.save-btn {
+  background: #28a745;
+}
+
+.save-btn:hover {
+  background: #218838;
+  transform: translateY(-2px);
+}
+
+/* Form Styles */
+.edit-form .form-control-custom {
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  border-radius: 10px;
+  padding: 12px 15px;
+}
+
+.edit-form .form-control-custom:focus {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.5);
+  color: white;
+  box-shadow: none;
+}
+
+.edit-form .form-label {
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 500;
+}
+
+.edit-form .form-control-custom::placeholder {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+/* Pagination Styles */
+.pagination-container .pagination {
+  margin-bottom: 0;
+}
+
+.pagination-container .page-link {
+  border: none;
+  color: #667eea;
+  padding: 10px 16px;
+  margin: 0 4px;
+  border-radius: 10px;
+  transition: all 0.3s ease;
+}
+
+.pagination-container .page-item.active .page-link {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+}
+
+.pagination-container .page-link:hover {
+  background: #f8f9fa;
+  color: #764ba2;
+}
+
+/* Empty State */
+.empty-orders {
+  color: #6c757d;
+}
+
+.empty-orders i {
+  opacity: 0.5;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .profile-header .profile-avatar {
+    font-size: 60px;
+  }
+  
+  .orders-table {
+    font-size: 14px;
+  }
+  
+  .order-image {
+    width: 40px;
+    height: 40px;
+  }
+  
+  .table-header th {
+    padding: 10px 8px;
+    font-size: 12px;
+  }
+  
+  .profile-info .info-item {
+    flex-direction: column;
+    text-align: center;
+  }
+  
+  .profile-info .info-item i {
+    margin-right: 0;
+    margin-bottom: 8px;
+  }
+}
+
+/* Animation */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.profile-card, .orders-card {
+  animation: fadeIn 0.6s ease-out;
+}
+/* Thêm vào ProfilePage.css */
+
+/* Modal Styles */
+.modal-header-custom {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-bottom: none;
+}
+
+.modal-header-custom .btn-close {
+  filter: invert(1);
+}
+
+.order-summary-card {
+  border-left: 4px solid #667eea;
+}
+
+.product-image-modal {
+  width: 60px;
+  height: 60px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 2px solid #e9ecef;
+}
+
+/* Hover effect cho table rows */
+.orders-table tbody tr {
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.orders-table tbody tr:hover {
+  background-color: #f8f9fa;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Badge variants */
+.bg-success { background-color: #28a745 !important; }
+.bg-warning { background-color: #ffc107 !important; color: #000 !important; }
+.bg-danger { background-color: #dc3545 !important; }
+.bg-info { background-color: #17a2b8 !important; }
+.bg-secondary { background-color: #6c757d !important; }
+
+/* Responsive cho modal */
+@media (max-width: 768px) {
+  .product-image-modal {
+    width: 50px;
+    height: 50px;
+  }
+  
+  .modal-header-custom .modal-title {
+    font-size: 1.1rem;
+  }
+}
+
+/* Animation cho modal */
+.modal-content {
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-50px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

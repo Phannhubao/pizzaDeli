@@ -124,7 +124,7 @@ export default function AdminHeader() {
         >
           <span className="navbar-toggler-icon" />
         </button>
-        <a className="navbar-brand me-auto ms-lg-0 ms-3 fw-bold p-0" href="@">
+        <a className="navbar-brand me-auto ms-lg-0 ms-3 fw-bold p-0" href="/admin">
           <i className="bi bi-egg-fried me-2"></i>Pizza Deli Admin
         </a>
 

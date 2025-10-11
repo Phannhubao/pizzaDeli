@@ -144,7 +144,9 @@ async function PostOrderDetail(data) {
 async function GetOrderDetailList() {
   return (await axios.get(`${Domain}/api/OrderDeTail/GetOrderDetailList`));
 }
-
+async function GetDetailListByOrder(orderId) {
+  return (await axios.get(`${Domain}/api/OrderDeTail/GetDetailListByOrder/${orderId}`)).data;
+}
 // Password update
 async function PutPassword(userId, newPassword) {
   return await axios.put(`${Domain}/api/users/${userId}/password`, {
@@ -200,6 +202,7 @@ export {
   PutOrderStatus,
   CheckOrderProduct,
   PostOrderDetail,
+  GetDetailListByOrder,
 
   // PAYMENT
   PutPaymentStatus,

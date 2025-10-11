@@ -340,7 +340,7 @@ const VNPayReturn = () => {
             {paymentStatus === "success" && (
               <button 
                 className="btn-retry" 
-                onClick={() => navigate("/order-history")}
+                onClick={() => navigate("/profile")}
               >
                 📋 Xem đơn hàng
               </button>
