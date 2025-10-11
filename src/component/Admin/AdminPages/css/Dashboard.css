@@ -259,3 +259,11 @@
     margin-bottom: 1rem;
   }
 }
+.pagination button {
+  min-width: 40px;
+  border-radius: 8px;
+}
+.pagination .btn-primary {
+  background-color: #007bff;
+  color: #fff;
+}

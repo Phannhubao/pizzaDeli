@@ -1,6 +1,6 @@
 import "../css/style.css";
 import "../css/dataTables.bootstrap5.min.css";
-import "../css/Dashboard.css"; // Tạo file CSS mới cho dashboard
+import "../css/Dashboard.css";
 import ChartQuantityProduct from "../Chart/ChartQuantityProduct";
 import ChartProductOrder from "../Chart/ChartProductOrder";
 import { useEffect, useState } from "react";
@@ -19,25 +19,18 @@ export default function Dashboard() {
   const [productCount, setProductCount] = useState(0);
   const [detailList, setDetailList] = useState([]);
 
+  // pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
   useEffect(() => {
-    // --- Tính tổng doanh thu từ các đơn hàng COMPLETED ---
     const fetchRevenue = async () => {
       try {
         const res = await GetAllOrders();
-        console.log("Raw GetAllOrders response:", res);
-
-        let orders = [];
-        if (res && Array.isArray(res.data)) {
-          orders = res.data;
-        } else if (Array.isArray(res)) {
-          orders = res;
-        }
-
+        let orders = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
         const total = orders
           .filter(order => order.status === "COMPLETED")
           .reduce((sum, order) => sum + (Number(order.totalPrice) || 0), 0);
-
-        console.log("Final Total Revenue (COMPLETED orders):", total);
         setTotalRevenue(total);
       } catch (err) {
         console.error("Error loading orders:", err);
@@ -45,22 +38,13 @@ export default function Dashboard() {
       }
     };
 
-    // --- Lấy danh sách chi tiết đơn hàng để hiển thị bảng ---
     const fetchOrderDetails = async () => {
       try {
         const detailRes = await GetOrderDetailList();
-        console.log("Raw GetOrderDetailList response:", detailRes);
-
-        let details = [];
-        if (detailRes && Array.isArray(detailRes.data)) {
-          details = detailRes.data;
-        } else if (detailRes && detailRes.data && Array.isArray(detailRes.data.data)) {
-          details = detailRes.data.data;
-        } else if (Array.isArray(detailRes)) {
-          details = detailRes;
-        }
-
-        console.log("Normalized Order Details:", details);
+        let details =
+          Array.isArray(detailRes?.data) ? detailRes.data :
+          Array.isArray(detailRes?.data?.data) ? detailRes.data.data :
+          Array.isArray(detailRes) ? detailRes : [];
         setDetailList(details.slice(0, 10000));
       } catch (error) {
         console.error("Error loading order details:", error);
@@ -71,14 +55,11 @@ export default function Dashboard() {
     const fetchCategory = async () => {
       try {
         const categories = await GetCategoryList();
-        console.log("Raw GetCategoryList response:", categories);
-
-        let categoryData = [];
-        if (categories && Array.isArray(categories.data)) {
-          categoryData = categories.data;
-        } else if (Array.isArray(categories)) {
-          categoryData = categories;
-        }
+        const categoryData = Array.isArray(categories?.data)
+          ? categories.data
+          : Array.isArray(categories)
+          ? categories
+          : [];
         setBrandCount(categoryData.length);
       } catch (error) {
         console.log("Error loading categories:", error);
@@ -89,14 +70,11 @@ export default function Dashboard() {
     const fetchProducts = async () => {
       try {
         const response = await GetProductList();
-        console.log("Raw GetProductList response:", response);
-
-        let productData = [];
-        if (response && Array.isArray(response.data)) {
-          productData = response.data;
-        } else if (Array.isArray(response)) {
-          productData = response;
-        }
+        const productData = Array.isArray(response?.data)
+          ? response.data
+          : Array.isArray(response)
+          ? response
+          : [];
         setProductCount(productData.length);
       } catch (error) {
         console.log("Error loading products:", error);
@@ -110,7 +88,14 @@ export default function Dashboard() {
     fetchProducts();
   }, []);
 
-  console.log("Render TotalRevenue:", totalRevenue);
+  // tính toán dữ liệu hiển thị theo trang
+  const totalPages = Math.ceil(detailList.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const currentItems = detailList.slice(startIndex, startIndex + itemsPerPage);
+
+  const handlePageChange = (page) => {
+    if (page >= 1 && page <= totalPages) setCurrentPage(page);
+  };
 
   return (
     <main className="dashboard-main mt-5 pt-3">
@@ -179,7 +164,7 @@ export default function Dashboard() {
         <div className="row">
           <div className="col-md-12 mb-4">
             <div className="card data-card">
-              <div className="card-header data-header">
+              <div className="card-header data-header d-flex justify-content-between align-items-center">
                 <span><i className="bi bi-table me-2"></i> Recent Order Details</span>
                 <Link to="/admin/orders" className="view-all-link">
                   View All <i className="bi bi-arrow-right"></i>
@@ -199,8 +184,8 @@ export default function Dashboard() {
                       </tr>
                     </thead>
                     <tbody>
-                      {detailList.length > 0 ? (
-                        detailList.map((item) => (
+                      {currentItems.length > 0 ? (
+                        currentItems.map((item) => (
                           <tr key={item.detailId}>
                             <td><span className="id-badge">{item.detailId}</span></td>
                             <td>ORD-{item.orderId}</td>
@@ -230,6 +215,37 @@ export default function Dashboard() {
                     </tbody>
                   </table>
                 </div>
+
+                {/* Pagination controls */}
+                {detailList.length > itemsPerPage && (
+                  <div className="pagination d-flex justify-content-center mt-3">
+                    <button
+                      className="btn btn-outline-secondary me-2"
+                      disabled={currentPage === 1}
+                      onClick={() => handlePageChange(currentPage - 1)}
+                    >
+                      Prev
+                    </button>
+
+                    {Array.from({ length: totalPages }, (_, i) => (
+                      <button
+                        key={i}
+                        className={`btn me-1 ${currentPage === i + 1 ? "btn-primary" : "btn-outline-primary"}`}
+                        onClick={() => handlePageChange(i + 1)}
+                      >
+                        {i + 1}
+                      </button>
+                    ))}
+
+                    <button
+                      className="btn btn-outline-secondary ms-2"
+                      disabled={currentPage === totalPages}
+                      onClick={() => handlePageChange(currentPage + 1)}
+                    >
+                      Next
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           </div>
