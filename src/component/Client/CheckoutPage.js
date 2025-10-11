@@ -1,11 +1,10 @@
-
-
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { FaArrowLeft, FaShoppingCart, FaUser, FaMapMarkerAlt, FaCreditCard, FaSpinner } from "react-icons/fa";
 import axios from "axios";
-import CryptoJS from "crypto-js"; // Import crypto-js
+import CryptoJS from "crypto-js";
 import '../../css/checkout.css'
+
 // Hàm format datetime theo chuẩn VNPay (yyyyMMddHHmmss, GMT+7)
 const formatDateVN = (date) => {
   const tzOffset = 7 * 60 * 60000; // GMT+7
@@ -21,12 +20,16 @@ const formatDateVN = (date) => {
   return `${yyyy}${MM}${dd}${HH}${mm}${ss}`;
 };
 
+// Hàm lấy base URL động
+const getBaseUrl = () => {
+  return window.location.origin;
+};
+
 const CheckoutPage = () => {
   const navigate = useNavigate();
   const [cartItems, setCartItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState(false);
-  const [orderId, setOrderId] = useState(null);
 
   const [customerInfo, setCustomerInfo] = useState({
     fullName: "",
@@ -40,12 +43,12 @@ const CheckoutPage = () => {
   const [paymentMethod, setPaymentMethod] = useState("COD");
   const Domain = process.env.REACT_APP_API_URL || "https://deli-api.onrender.com";
 
-  // Thông tin VNPay
+  // Thông tin VNPay - returnUrl động trả về component VNPayReturn
   const vnpayConfig = {
     tmnCode: "2EYSS84X", 
     secretKey: "AT2JO218AOV4EHRYFUC7GW9FF755NBEL", 
     vnpayUrl: "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html",
-    returnUrl: "http://localhost:3000/vnpay_return"
+    returnUrl: `${getBaseUrl()}/vnpay-return`
   };
 
   useEffect(() => {
@@ -67,7 +70,6 @@ const CheckoutPage = () => {
             quantity: item.quantity || 1
           }));
           setCartItems(cartWithQuantity);
-        
         } else {
           navigate("/cart");
         }
@@ -112,23 +114,24 @@ const CheckoutPage = () => {
   // Hàm tạo checksum VNPay dùng crypto-js
   const createVnpayChecksum = (params, secretKey) => {
     const sortedParams = Object.keys(params).sort().reduce((result, key) => {
-      result[key] = params[key];
+      if (params[key] !== null && params[key] !== undefined && params[key] !== "") {
+        result[key] = params[key];
+      }
       return result;
     }, {});
+    
     const signData = new URLSearchParams(sortedParams).toString();
     return CryptoJS.HmacSHA512(signData, secretKey).toString();
   };
-  console.log(orderId);
-  const handleCheckout = async () => {
-    if (!validateForm()) return;
+
+  // Hàm tạo đơn hàng CHỈ DÙNG CHO COD
+  const createOrderForCOD = async () => {
     const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
     const userId = currentUser.id || currentUser.userId;
-    setLoading(true);
+    const currentTime = new Date().toISOString();
+    const totalQuantity = cartItems.reduce((total, item) => total + (item.quantity || 0), 0);
 
     try {
-      const currentTime = new Date().toISOString();
-      const totalQuantity = cartItems.reduce((total, item) => total + (item.quantity || 0), 0);
-
       // 1. Tạo đơn hàng
       const orderData = {
         phone_number: customerInfo.phone,
@@ -158,11 +161,11 @@ const CheckoutPage = () => {
       } else if (typeof orderRes.data === "number") {
         orderId = orderRes.data;
       }
+
       if (!orderId || isNaN(orderId)) {
         throw new Error("Không nhận được ID đơn hàng hợp lệ từ server");
       }
       orderId = Number(orderId);
-      setOrderId(orderId);
 
       // 3. Tạo OrderDetail
       const orderDetailList = cartItems.map(item => ({
@@ -179,46 +182,83 @@ const CheckoutPage = () => {
         headers: { "Content-Type": "application/json" }
       });
 
-      // 4. Gửi thông tin thanh toán
+      // 4. Gửi thông tin thanh toán (COD = false)
       const paymentData = {
         orderId: orderId,
         fullname: customerInfo.fullName,
-        status: paymentMethod !== "COD"
+        status: false // COD chưa thanh toán
       };
       await axios.post(`${Domain}/api/Payment/AddPayment`, paymentData, {
         headers: { "Content-Type": "application/json" }
       });
 
-      // 5. Thanh toán VNPay
-      if (paymentMethod === "BANK_TRANSFER") {
+      return orderId;
+    } catch (error) {
+      console.error("Error creating order:", error);
+      throw error;
+    }
+  };
+
+  const handleCheckout = async () => {
+    if (!validateForm()) return;
+    setLoading(true);
+
+    try {
+      if (paymentMethod === "COD") {
+        // Thanh toán COD: tạo đơn hàng ngay
+        await createOrderForCOD();
+        
+        // Xóa giỏ hàng và hiển thị thông báo thành công
+        localStorage.removeItem("pizza4ps_cart");
+        setCartItems([]);
+        setOrderSuccess(true);
+        
+      } else if (paymentMethod === "BANK_TRANSFER") {
+        // Thanh toán VNPay: KHÔNG tạo đơn hàng ở đây, chỉ chuyển hướng đến VNPay
+        // Tạo transaction ID duy nhất
+        const transactionId = `VNPAY_${Date.now()}`;
+        
         const vnpParams = {
           vnp_Version: '2.1.0',
           vnp_Command: 'pay',
           vnp_TmnCode: vnpayConfig.tmnCode,
           vnp_Amount: totalPrice * 100,
           vnp_CurrCode: 'VND',
-          vnp_TxnRef: `Order_${orderId}`,
-          vnp_OrderInfo: `Thanh toan don hang ${orderId}`,
+          vnp_TxnRef: transactionId, // Dùng transaction ID duy nhất
+          vnp_OrderInfo: `Thanh toan don hang ${transactionId}`,
           vnp_OrderType: 'billpayment',
           vnp_Locale: 'vn',
           vnp_ReturnUrl: vnpayConfig.returnUrl,
           vnp_IpAddr: '127.0.0.1',
           vnp_CreateDate: formatDateVN(new Date()),
-          vnp_ExpireDate: formatDateVN(new Date(Date.now() + 10 * 60 * 1000))
-
+          vnp_ExpireDate: formatDateVN(new Date(Date.now() + 15 * 60 * 1000)) // 15 phút
         };
 
+        // Tạo secure hash
+        const secureHash = createVnpayChecksum(vnpParams, vnpayConfig.secretKey);
+        
         const vnpUrl = new URL(vnpayConfig.vnpayUrl);
-        Object.keys(vnpParams).forEach(key => vnpUrl.searchParams.append(key, vnpParams[key]));
-        vnpUrl.searchParams.append('vnp_SecureHash', createVnpayChecksum(vnpParams, vnpayConfig.secretKey));
+        Object.keys(vnpParams).forEach(key => {
+          vnpUrl.searchParams.append(key, vnpParams[key]);
+        });
+        vnpUrl.searchParams.append('vnp_SecureHash', secureHash);
 
+        console.log("Redirecting to VNPay:", vnpUrl.toString());
+        
+        // Lưu thông tin đơn hàng tạm thời để sử dụng khi trả về
+        const pendingOrder = {
+          customerInfo,
+          cartItems,
+          totalPrice,
+          totalItems,
+          paymentMethod,
+          transactionId: transactionId,
+          createdAt: new Date().toISOString()
+        };
+        localStorage.setItem("pending_vnpay_order", JSON.stringify(pendingOrder));
+        
         // 🚀 Chuyển hướng sang cổng thanh toán VNPay
         window.location.href = vnpUrl.toString();
-      } else {
-        // Nếu COD
-        localStorage.removeItem("pizza4ps_cart");
-        setCartItems([]);
-        setOrderSuccess(true);
       }
     } catch (err) {
       console.error("Checkout error:", err.response?.data || err.message);
@@ -350,7 +390,3 @@ const CheckoutPage = () => {
 };
 
 export default CheckoutPage;
-
-
-
-

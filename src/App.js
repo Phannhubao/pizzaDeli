@@ -30,6 +30,7 @@ import UserManager from "./component/Admin/AdminPages/Pages/User/UserManager";
 import OrderManager from "./component/Admin/AdminPages/Pages/Order/OrderManager";
 import CheckoutPage from "./component/Client/CheckoutPage";
 import ProfilePage from "./component/Client/ProfilePage";
+import VNPayReturn from './component/Client/VNPayReturn';
 
 function App() {
   return (
@@ -54,6 +55,7 @@ function App() {
                     <Route path="/products" element={<ProductList />} />
                     <Route path="/Checkout" element={<CheckoutPage />} />
                     <Route path="/profile" element={<ProfilePage />} />
+                    <Route path="/vnpay-return" element={<VNPayReturn />} />
 
                   </Routes>
                 </main>
