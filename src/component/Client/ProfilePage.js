@@ -13,6 +13,7 @@ import {
   Badge
 } from "react-bootstrap";
 import Swal from "sweetalert2";
+import html2pdf from "html2pdf.js";
 import { GetUserByID, PutUser, GetOrdersByUserID } from "../../services/ApiService";
 import { GetDetailListByOrder } from "../../services/ApiService";
 import "../../css/profile.css";
@@ -28,6 +29,7 @@ const ProfilePage = () => {
   const [orderDetails, setOrderDetails] = useState([]); // Đảm bảo luôn là array
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [exporting, setExporting] = useState(false);
   
   // Phân trang
   const [currentPage, setCurrentPage] = useState(1);
@@ -36,6 +38,12 @@ const ProfilePage = () => {
   const userData = JSON.parse(localStorage.getItem("user"));
   const userId = userData?.id;
 
+
+//   const registerVietnameseFont = (doc) => {
+//   // Sử dụng font mặc định của jsPDF hỗ trợ Unicode
+//   // doc.setFont("helvetica", "normal");
+//   doc.setFont("times", "normal");
+// };
   // Lấy thông tin user + đơn hàng
   useEffect(() => {
     const fetchData = async () => {
@@ -107,6 +115,362 @@ const ProfilePage = () => {
     }
   };
 
+  // Hàm xuất PDF
+  // const handleExportPDF = async () => {
+  //   if (!selectedOrder || !Array.isArray(orderDetails)) {
+  //     Swal.fire("Lỗi", "Không có dữ liệu để xuất PDF", "error");
+  //     return;
+  //   }
+
+  //   setExporting(true);
+    
+  //   try {
+  //     // Tạo PDF mới với orientation landscape để có nhiều không gian hơn
+  //     const doc = new jsPDF({
+  //       orientation: 'portrait',
+  //       unit: 'mm',
+  //       format: 'a4'
+  //     });
+
+  //     // Đăng ký font tiếng Việt
+  //     registerVietnameseFont(doc);
+      
+  //     // Thiết lập font mặc định
+  //     doc.setFont("times");
+  //     doc.setFontSize(20);
+  //     doc.setTextColor(40, 40, 40);
+      
+  //     // Tiêu đề công ty - sử dụng text thaydeli vì text để tránh lỗi font
+  //     doc.text("PIZZA DELI RESTAURANT", 105, 20, { align: 'center' });
+      
+  //     doc.setFontSize(10);
+  //     doc.setTextColor(100, 100, 100);
+  //     doc.text("Dia chi: 123 Duong ABC, Quan 1, TP.HCM", 105, 27, { align: 'center' });
+  //     doc.text("Dien thoai: 1900 1234 - Email: info@pizza.com", 105, 33, { align: 'center' });
+      
+  //     // Đường kẻ ngang
+  //     doc.setDrawColor(200, 200, 200);
+  //     doc.line(20, 40, 190, 40);
+      
+  //     // Tiêu đề hóa đơn
+  //     doc.setFontSize(16);
+  //     doc.setTextColor(102, 126, 234);
+  //     doc.text(`HOA DON #${selectedOrder.orderId}`, 105, 50, { align: 'center' });
+      
+  //     // Thông tin khách hàng và đơn hàng
+  //     doc.setFontSize(9);
+  //     doc.setTextColor(80, 80, 80);
+      
+  //     // Thông tin khách hàng
+  //     doc.text("THONG TIN KHACH HANG:", 25, 60);
+  //     doc.text(`Ho ten: ${user?.name || 'N/A'}`, 25, 67);
+  //     doc.text(`Email: ${user?.email || 'N/A'}`, 25, 74);
+  //     doc.text(`Dien thoai: ${selectedOrder.phone_number || 'N/A'}`, 25, 81);
+  //     doc.text(`Dia chi: ${selectedOrder.address || 'N/A'}`, 25, 88);
+      
+  //     // Thông tin đơn hàng
+  //     doc.text("THONG TIN DON HANG:", 120, 60);
+  //     doc.text(`Ma don: #${selectedOrder.orderId}`, 120, 67);
+  //     doc.text(`Ngay dat: ${new Date(selectedOrder.createdAt).toLocaleDateString('vi-VN')}`, 120, 74);
+  //     doc.text(`Trang thai: ${selectedOrder.status}`, 120, 81);
+  //     doc.text(`Phuong thuc: ${selectedOrder.paymentMethod || 'Thanh toan khi nhan hang'}`, 120, 88);
+      
+  //     // Bảng sản phẩm
+  //     const tableColumn = ["STT", "Ten san pham", "So luong", "Don gia", "Thanh tien"];
+  //     const tableRows = [];
+      
+  //     orderDetails.forEach((item, index) => {
+  //       const productData = [
+  //         index + 1,
+  //         item.produc_name || "Khong co ten",
+  //         item.quantity || 0,
+  //         `${(item.price || 0).toLocaleString()} VND`,
+  //         `${((item.price || 0) * (item.quantity || 0)).toLocaleString()} VND`
+  //       ];
+  //       tableRows.push(productData);
+  //     });
+      
+  //     // Thêm bảng vào PDF
+  //     autoTable(doc, {
+  //       head: [tableColumn],
+  //       body: tableRows,
+  //       startY: 95,
+  //       styles: {
+  //         fontSize: 8,
+  //         cellPadding: 2,
+  //         font: 'helvetica',
+  //         fontStyle: 'normal'
+  //       },
+  //       headStyles: {
+  //         fillColor: [102, 126, 234],
+  //         textColor: 255,
+  //         fontStyle: 'bold',
+  //         font: 'helvetica'
+  //       },
+  //       bodyStyles: {
+  //         font: 'helvetica',
+  //         fontStyle: 'normal'
+  //       },
+  //       alternateRowStyles: {
+  //         fillColor: [245, 245, 245]
+  //       },
+  //       margin: { top: 95 },
+  //       didDrawPage: function (data) {
+  //         // Đảm bảo font được giữ nguyên khi vẽ trang
+  //         doc.setFont('helvetica', 'normal');
+  //       }
+  //     });
+      
+  //     // Tổng tiền
+  //     const finalY = doc.lastAutoTable.finalY + 10;
+  //     const totalAmount = calculateTotalFromDetails(orderDetails);
+      
+  //     doc.setFontSize(10);
+  //     doc.setTextColor(40, 40, 40);
+  //     doc.text("TONG TIEN:", 140, finalY);
+  //     doc.setFontSize(12);
+  //     doc.setTextColor(102, 126, 234);
+  //     doc.text(`${totalAmount.toLocaleString()} VND`, 170, finalY, { align: 'right' });
+      
+  //     // Thuế và ghi chú
+  //     doc.setFontSize(8);
+  //     doc.setTextColor(100, 100, 100);
+  //     doc.text("(Da bao gom VAT)", 170, finalY + 5, { align: 'right' });
+      
+  //     // Lời cảm ơn
+  //     doc.setFontSize(9);
+  //     doc.setTextColor(80, 80, 80);
+  //     doc.text("Cam on quy khach da su dung dich vu!", 105, finalY + 20, { align: 'center' });
+  //     doc.text("Hen gap lai quy khach trong nhung lan mua hang tiep theo!", 105, finalY + 27, { align: 'center' });
+      
+  //     // Chữ ký
+  //     doc.text("Chu ky nguoi giao hang", 50, finalY + 45);
+  //     doc.text("Chu ky khach hang", 150, finalY + 45);
+      
+  //     doc.line(40, finalY + 50, 90, finalY + 50);
+  //     doc.line(140, finalY + 50, 190, finalY + 50);
+      
+  //     // Lưu file PDF
+  //     doc.save(`hoa-don-${selectedOrder.orderId}.pdf`);
+      
+  //     Swal.fire({
+  //       title: "Thành công!",
+  //       text: "Hóa đơn đã được xuất thành công",
+  //       icon: "success",
+  //       timer: 2000,
+  //       showConfirmButton: false
+  //     });
+      
+  //   } catch (error) {
+  //     console.error("Lỗi khi xuất PDF:", error);
+  //     Swal.fire("Lỗi", "Không thể xuất file PDF", "error");
+  //   } finally {
+  //     setExporting(false);
+  //   }
+  // };
+const handleExportPDF = async () => {
+    if (!selectedOrder || !Array.isArray(orderDetails) || orderDetails.length === 0) {
+      Swal.fire("Lỗi", "Không có dữ liệu để xuất PDF", "error");
+      return;
+    }
+
+    setExporting(true);
+    
+    try {
+      const totalAmount = calculateTotalFromDetails(orderDetails);
+      
+      // Tạo nội dung HTML cho hóa đơn
+      const invoiceHTML = `
+        <div style="font-family: 'DejaVu Sans', 'Arial Unicode MS', 'Arial', sans-serif; padding: 25px; max-width: 800px; margin: 0 auto; color: #333;">
+          <!-- Header -->
+          <div style="text-align: center; margin-bottom: 30px; border-bottom: 2px solid #667eea; padding-bottom: 20px;">
+            <h1 style="color: #2c3e50; margin-bottom: 10px; font-size: 28px;">PIZZA DELI RESTAURANT</h1>
+            <p style="color: #7f8c8d; margin: 5px 0; font-size: 14px;">Địa chỉ: 123 Đường ABC, Quận 1, TP.HCM</p>
+            <p style="color: #7f8c8d; margin: 5px 0; font-size: 14px;">Điện thoại: 1900 1234 - Email: info@pizzadeli.com</p>
+          </div>
+          
+          <!-- Invoice Title -->
+          <div style="text-align: center; margin-bottom: 30px;">
+            <h2 style="color: #667eea; font-size: 24px; margin-bottom: 10px;">HÓA ĐƠN BÁN HÀNG</h2>
+            <h3 style="color: #2c3e50; font-size: 20px; margin: 0;">#${selectedOrder.orderId}</h3>
+          </div>
+          
+          <!-- Customer and Order Info -->
+          <div style="display: flex; justify-content: space-between; margin-bottom: 30px; flex-wrap: wrap;">
+            <div style="flex: 1; min-width: 300px; margin-bottom: 15px;">
+              <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 4px solid #667eea;">
+                <h4 style="color: #2c3e50; margin-bottom: 15px; font-size: 16px;">THÔNG TIN KHÁCH HÀNG</h4>
+                <p style="margin: 8px 0;"><strong>Họ tên:</strong> ${user?.name || 'Chưa có thông tin'}</p>
+                <p style="margin: 8px 0;"><strong>Email:</strong> ${user?.email || 'Chưa có thông tin'}</p>
+                <p style="margin: 8px 0;"><strong>Điện thoại:</strong> ${selectedOrder.phone_number || 'Chưa có thông tin'}</p>
+                <p style="margin: 8px 0;"><strong>Địa chỉ:</strong> ${selectedOrder.address || 'Chưa có thông tin'}</p>
+              </div>
+            </div>
+            
+            <div style="flex: 1; min-width: 300px; margin-bottom: 15px;">
+              <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 4px solid #28a745;">
+                <h4 style="color: #2c3e50; margin-bottom: 15px; font-size: 16px;">THÔNG TIN ĐƠN HÀNG</h4>
+                <p style="margin: 8px 0;"><strong>Mã đơn:</strong> #${selectedOrder.orderId}</p>
+                <p style="margin: 8px 0;"><strong>Ngày đặt:</strong> ${new Date(selectedOrder.createdAt).toLocaleString('vi-VN')}</p>
+                <p style="margin: 8px 0;"><strong>Trạng thái:</strong> 
+                  <span style="background: ${getStatusColor(selectedOrder.status)}; color: white; padding: 2px 8px; border-radius: 12px; font-size: 12px; margin-left: 8px;">
+                    ${selectedOrder.status}
+                  </span>
+                </p>
+                <p style="margin: 8px 0;"><strong>Phương thức:</strong> ${selectedOrder.paymentMethod || 'Thanh toán khi nhận hàng'}</p>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Products Table -->
+          <div style="margin-bottom: 30px;">
+            <h4 style="color: #2c3e50; margin-bottom: 15px; font-size: 18px; border-bottom: 2px solid #e9ecef; padding-bottom: 8px;">
+              DANH SÁCH SẢN PHẨM
+            </h4>
+            <table style="width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+              <thead>
+                <tr style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                  <th style="padding: 12px; text-align: left; font-weight: 600;">STT</th>
+                  <th style="padding: 12px; text-align: left; font-weight: 600;">Tên sản phẩm</th>
+                  <th style="padding: 12px; text-align: center; font-weight: 600;">Số lượng</th>
+                  <th style="padding: 12px; text-align: right; font-weight: 600;">Đơn giá</th>
+                  <th style="padding: 12px; text-align: right; font-weight: 600;">Thành tiền</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${orderDetails.map((item, index) => `
+                  <tr style="${index % 2 === 0 ? 'background: #f8f9fa;' : 'background: white;'} border-bottom: 1px solid #e9ecef;">
+                    <td style="padding: 12px; border-bottom: 1px solid #e9ecef;">${index + 1}</td>
+                    <td style="padding: 12px; border-bottom: 1px solid #e9ecef;">
+                      <div>
+                        <strong>${item.produc_name || 'Không có tên'}</strong>
+                        <br>
+                        <small style="color: #6c757d;">Mã SP: ${item.productId || 'N/A'}</small>
+                      </div>
+                    </td>
+                    <td style="padding: 12px; text-align: center; border-bottom: 1px solid #e9ecef;">
+                      <span style="background: #6c757d; color: white; padding: 4px 12px; border-radius: 15px; font-size: 12px; font-weight: 600;">
+                        ${item.quantity || 0}
+                      </span>
+                    </td>
+                    <td style="padding: 12px; text-align: right; border-bottom: 1px solid #e9ecef;">
+                      ${(item.price || 0).toLocaleString('vi-VN')} ₫
+                    </td>
+                    <td style="padding: 12px; text-align: right; border-bottom: 1px solid #e9ecef; font-weight: 600;">
+                      ${((item.price || 0) * (item.quantity || 0)).toLocaleString('vi-VN')} ₫
+                    </td>
+                  </tr>
+                `).join('')}
+              </tbody>
+              <tfoot>
+                <tr style="background: #e9ecef;">
+                  <td colspan="4" style="padding: 15px; text-align: right; font-weight: 700; font-size: 16px;">
+                    TỔNG CỘNG:
+                  </td>
+                  <td style="padding: 15px; text-align: right; font-weight: 700; font-size: 18px; color: #667eea;">
+                    ${totalAmount.toLocaleString('vi-VN')} ₫
+                  </td>
+                </tr>
+                <tr style="background: #e9ecef;">
+                  <td colspan="5" style="padding: 5px 15px; text-align: right; font-size: 12px; color: #6c757d;">
+                    (Đã bao gồm VAT)
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+          
+          <!-- Thank You Message -->
+          <div style="text-align: center; margin: 40px 0 30px 0; padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 8px;">
+            <h4 style="margin-bottom: 10px; font-size: 18px;">Cảm ơn quý khách đã sử dụng dịch vụ!</h4>
+            <p style="margin: 0; font-size: 14px; opacity: 0.9;">Hẹn gặp lại quý khách trong những lần mua hàng tiếp theo!</p>
+          </div>
+          
+          <!-- Signatures -->
+          <div style="display: flex; justify-content: space-between; margin-top: 50px;">
+            <div style="text-align: center; flex: 1;">
+              <p style="margin-bottom: 40px; font-weight: 600;">Chữ ký người giao hàng</p>
+              <div style="border-top: 2px solid #333; width: 200px; margin: 0 auto;"></div>
+            </div>
+            <div style="text-align: center; flex: 1;">
+              <p style="margin-bottom: 40px; font-weight: 600;">Chữ ký khách hàng</p>
+              <div style="border-top: 2px solid #333; width: 200px; margin: 0 auto;"></div>
+            </div>
+          </div>
+          
+          <!-- Footer -->
+          <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e9ecef;">
+            <p style="color: #6c757d; font-size: 12px; margin: 5px 0;">
+              Hóa đơn điện tử - Có giá trị như hóa đơn GTGT
+            </p>
+            <p style="color: #6c757d; font-size: 12px; margin: 5px 0;">
+              Ngày xuất: ${new Date().toLocaleString('vi-VN')}
+            </p>
+          </div>
+        </div>
+      `;
+
+      // Tạo element từ HTML
+      const element = document.createElement('div');
+      element.innerHTML = invoiceHTML;
+
+      // Cấu hình PDF
+      const opt = {
+        margin: [10, 10, 10, 10],
+        filename: `hoa-don-${selectedOrder.orderId}.pdf`,
+        image: { 
+          type: 'jpeg', 
+          quality: 0.98 
+        },
+        html2canvas: { 
+          scale: 2,
+          useCORS: true,
+          logging: false,
+          letterRendering: true
+        },
+        jsPDF: { 
+          unit: 'mm', 
+          format: 'a4', 
+          orientation: 'portrait',
+          compress: true
+        },
+        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+      };
+
+      // Xuất PDF
+      await html2pdf().set(opt).from(element).save();
+      
+      Swal.fire({
+        title: "Thành công!",
+        text: "Hóa đơn đã được xuất thành công",
+        icon: "success",
+        timer: 2000,
+        showConfirmButton: false
+      });
+      
+    } catch (error) {
+      console.error("Lỗi khi xuất PDF:", error);
+      Swal.fire("Lỗi", "Không thể xuất file PDF. Vui lòng thử lại.", "error");
+    } finally {
+      setExporting(false);
+    }
+  };
+  const getStatusColor = (status) => {
+    switch (status?.toLowerCase()) {
+      case 'completed':
+      case 'delivered':
+        return '#28a745';
+      case 'processing':
+      case 'pending':
+        return '#ffc107';
+      case 'cancelled':
+        return '#dc3545';
+      case 'shipped':
+        return '#17a2b8';
+      default:
+        return '#6c757d';
+    }
+  };
   // Phân trang
   const indexOfLastOrder = currentPage * ordersPerPage;
   const indexOfFirstOrder = indexOfLastOrder - ordersPerPage;
@@ -507,9 +871,22 @@ const ProfilePage = () => {
           <Button variant="secondary" onClick={handleCloseOrderDetail}>
             Đóng
           </Button>
-          <Button variant="primary">
-            <i className="fas fa-print me-2"></i>
-            In hóa đơn
+          <Button 
+            variant="primary" 
+            onClick={handleExportPDF}
+            disabled={exporting || !selectedOrder || orderDetails.length === 0}
+          >
+            {exporting ? (
+              <>
+                <Spinner animation="border" size="sm" className="me-2" />
+                Đang xuất...
+              </>
+            ) : (
+              <>
+                <i className="fas fa-file-pdf me-2"></i>
+                Xuất PDF
+              </>
+            )}
           </Button>
         </Modal.Footer>
       </Modal>
