@@ -52,11 +52,11 @@ export default function AdminSidebar() {
                       </Link>
                     </li>
                     <li>
-                      <Link to="/admin/brands" className="nav-link px-3">
+                      <Link to="/admin/categories" className="nav-link px-3">
                         <span className="me-2">
                           <i className="fa-brands fa-bandcamp"></i>{" "}
                         </span>
-                        <span>Brands</span>
+                        <span>Categories</span>
                       </Link>
                     </li>
                     <li>
@@ -67,23 +67,23 @@ export default function AdminSidebar() {
                         <span>Orders</span>
                       </Link>
                     </li>
-                    <li>
+                    {/* <li>
                       <Link to="/admin/reviews" className="nav-link px-3">
                         <span className="me-2">
                           <i className="fa fa-comment" aria-hidden="true"></i>
                         </span>
                         <span>Reviews</span>
                       </Link>
-                    </li>
+                    </li> */}
                   </ul>
                 </div>
               </li>
               <li>
-                <Link to="/admin/accounts" className="nav-link px-3">
+                <Link to="/admin/users" className="nav-link px-3">
                   <span className="me-2">
                     <i className="bi bi-person-square"></i>{" "}
                   </span>
-                  <span>Account</span>
+                  <span>Users</span>
                 </Link>
               </li>
               <li className="my-4">
