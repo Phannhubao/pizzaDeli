@@ -55,7 +55,7 @@ const ProfilePage = () => {
         setOrders(ordersRes);
       } catch (err) {
         console.error("Lỗi khi tải dữ liệu:", err);
-        Swal.fire("Lỗi", "Không thể tải thông tin người dùng hoặc đơn hàng", "error");
+       
       } finally {
         setLoading(false);
       }
