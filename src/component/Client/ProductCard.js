@@ -1,15 +1,19 @@
 import React from "react";
 import { FaPlus } from "react-icons/fa";
 import Swal from "sweetalert2";
+import { useCart } from "../../context/CartContext";
 
 const ProductCard = ({ product, onClick }) => {
+  const { addToCart } = useCart();
+
   const formatPrice = (price) => {
     return new Intl.NumberFormat("vi-VN").format(price) + " đ";
   };
 
   const handleAddToCart = (e) => {
     e.stopPropagation();
-    if (!product || !product.productId) {
+    const pid = product?.productId ?? product?.id;
+    if (!product || pid === undefined || pid === null) {
       console.error("Product or productId không hợp lệ:", product);
       Swal.fire({
         icon: "error",
@@ -20,46 +24,15 @@ const ProductCard = ({ product, onClick }) => {
       return;
     }
 
-    // Lấy giỏ hàng hiện tại từ localStorage
-    let savedCart;
     try {
-      savedCart = localStorage.getItem("pizza4ps_cart");
-      const cart = savedCart ? JSON.parse(savedCart) : [];
-      console.log("Current cart from localStorage:", cart);
+      addToCart(product, 1);
 
-      // Kiểm tra sản phẩm đã tồn tại trong giỏ hàng
-      const existingItem = cart.find((item) => item.productId === product.productId);
-      if (existingItem) {
-        Swal.fire({
-          position: "top-end",
-          icon: "info",
-          title: "Sản phẩm đã có trong giỏ",
-          text: `${product.productName} đã có trong giỏ hàng`,
-          showConfirmButton: false,
-          timer: 1500,
-          toast: true,
-        });
-        return;
-      }
-
-      // Thêm sản phẩm vào giỏ hàng
-      const updatedCart = [...cart, { ...product, quantity: 1 }];
-      console.log("Updated cart before save:", updatedCart);
-
-      // Lưu vào localStorage
-      localStorage.setItem("pizza4ps_cart", JSON.stringify(updatedCart));
-      console.log("localStorage set with:", JSON.stringify(updatedCart));
-
-      // Xác nhận dữ liệu đã lưu
-      const savedAfter = localStorage.getItem("pizza4ps_cart");
-      console.log("Data in localStorage after save:", savedAfter ? JSON.parse(savedAfter) : null);
-
-      // Hiển thị thông báo thành công mà không điều hướng
+      // Hiển thị thông báo thành công
       Swal.fire({
         position: "top-end",
         icon: "success",
         title: "Đã thêm vào giỏ hàng",
-        text: `${product.productName} đã được thêm vào giỏ hàng`,
+        text: `${product.productName || product.name || 'Sản phẩm'} đã được thêm vào giỏ hàng`,
         showConfirmButton: false,
         timer: 1500,
         toast: true,

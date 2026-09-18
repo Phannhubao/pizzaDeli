@@ -16,6 +16,7 @@ import LoginPage from "./component/Client/LoginPage";
 
 import { AuthProvider } from './component/Admin/AdminPages/Context/AuthContext';
 import ProtectedRoute from './component/Admin/AdminPages/Context/ProtectedRoute';
+import { CartProvider } from "./context/CartContext";
 
 // Admin pages
 import AdminLayout from "./component/Admin/AdminPages/Layout/AdminLayout";
@@ -35,69 +36,71 @@ import VNPayReturn from './component/Client/VNPayReturn';
 function App() {
   return (
     <Router>
-      <AuthProvider>
-        <Routes>
-          {/* -------- CLIENT LAYOUT -------- */}
-          <Route
-            path="/*"
-            element={
-              <>
-                <Header />
-                <main className="container">
-                  <Routes>
-                    <Route path="/" element={<Home />} />
-                    <Route path="/contact" element={<Contact />} />
-                    <Route path="/product/:id" element={<ProductDetail />} />
-                    <Route path="/about" element={<About />} />
-                    <Route path="/signup" element={<Signup />} />
-                    <Route path="/login" element={<LoginPage />} />
-                    <Route path="/cart" element={<Cart />} />
-                    <Route path="/products" element={<ProductList />} />
-                    <Route path="/Checkout" element={<CheckoutPage />} />
-                    <Route path="/profile" element={<ProfilePage />} />
-                    <Route path="/vnpay-return" element={<VNPayReturn />} />
+      <CartProvider>
+        <AuthProvider>
+          <Routes>
+            {/* -------- CLIENT LAYOUT -------- */}
+            <Route
+              path="/*"
+              element={
+                <>
+                  <Header />
+                  <main className="container">
+                    <Routes>
+                      <Route path="/" element={<Home />} />
+                      <Route path="/contact" element={<Contact />} />
+                      <Route path="/product/:id" element={<ProductDetail />} />
+                      <Route path="/about" element={<About />} />
+                      <Route path="/signup" element={<Signup />} />
+                      <Route path="/login" element={<LoginPage />} />
+                      <Route path="/cart" element={<Cart />} />
+                      <Route path="/products" element={<ProductList />} />
+                      <Route path="/Checkout" element={<CheckoutPage />} />
+                      <Route path="/profile" element={<ProfilePage />} />
+                      <Route path="/vnpay-return" element={<VNPayReturn />} />
 
-                  </Routes>
-                </main>
-                <Footer />
-              </>
-            }
-          />
+                    </Routes>
+                  </main>
+                  <Footer />
+                </>
+              }
+            />
 
-          {/* -------- ADMIN LAYOUT -------- */}
-          <Route
-            path="/admin/*"
-            element={
-              <ProtectedRoute>
-                <AdminLayout />
-              </ProtectedRoute>
-            }
-          >
-            <Route index element={<Dashboard />} />
-            {/* <Route path="accounts">
-              <Route index element={<AccountManager />} />
-              <Route path="create" element={<CreateAccount />} />
-            </Route> */}
-            <Route path="categories">
-              <Route index element={<CategoryManager />} />
-              <Route path="create" element={<CreateCategory />} />
+            {/* -------- ADMIN LAYOUT -------- */}
+            <Route
+              path="/admin/*"
+              element={
+                <ProtectedRoute>
+                  <AdminLayout />
+                </ProtectedRoute>
+              }
+            >
+              <Route index element={<Dashboard />} />
+              {/* <Route path="accounts">
+                <Route index element={<AccountManager />} />
+                <Route path="create" element={<CreateAccount />} />
+              </Route> */}
+              <Route path="categories">
+                <Route index element={<CategoryManager />} />
+                <Route path="create" element={<CreateCategory />} />
+              </Route>
+              <Route path="products">
+                <Route index element={<ProductManager />} />
+                <Route path="create" element={<CreateProduct />} />
+                <Route path="update/:id" element={<UpdateProduct />} />
+              </Route>
+              <Route path="users">
+                <Route index element={<UserManager />} />
+                
+              </Route>
+              <Route path="orders">
+                <Route index element={<OrderManager />} />
+                
+              </Route>
             </Route>
-            <Route path="products">
-              <Route index element={<ProductManager />} />
-              <Route path="create" element={<CreateProduct />} />
-              <Route path="update/:id" element={<UpdateProduct />} />
-            </Route>
-            <Route path="users">
-              <Route index element={<UserManager />} />
-              
-            </Route>
-            <Route path="orders">
-              <Route index element={<OrderManager />} />
-              
-            </Route>
-          </Route>
-        </Routes>
-      </AuthProvider>
+          </Routes>
+        </AuthProvider>
+      </CartProvider>
     </Router>
   );
 }

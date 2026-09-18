@@ -5,34 +5,26 @@ import { Link, useNavigate } from 'react-router-dom';
 import '../../css/header.css';
 import Swal from "sweetalert2";
 import { PostLogout } from "../../services/ApiService"; // Import PostLogout
+import { useCart } from "../../context/CartContext";
 
 const Header = () => {
   const navigate = useNavigate();
-  const [cartItemsCount, setCartItemsCount] = useState(0); // Sử dụng state để theo dõi số lượng
+  const { totalItems } = useCart();
+  const [isBumping, setIsBumping] = useState(false);
+
+  // Hiệu ứng nhảy số khi có sản phẩm mới được thêm vào giỏ
+  useEffect(() => {
+    if (totalItems === 0) return;
+    setIsBumping(true);
+    const timer = setTimeout(() => {
+      setIsBumping(false);
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [totalItems]);
 
   // Lấy thông tin user từ localStorage (giả sử bạn lưu {email, token})
   const userToken = JSON.parse(localStorage.getItem("user"));
-
-  // Cập nhật số lượng sản phẩm từ localStorage khi component mount
-  useEffect(() => {
-    const savedCart = localStorage.getItem("pizza4ps_cart");
-    if (savedCart) {
-      try {
-        const cartItems = JSON.parse(savedCart);
-        if (Array.isArray(cartItems) && cartItems.length > 0) {
-          const totalQuantity = cartItems.reduce((total, item) => total + (item.quantity || 0), 0);
-          setCartItemsCount(totalQuantity);
-        } else {
-          setCartItemsCount(0);
-        }
-      } catch (error) {
-        console.error("Lỗi khi phân tích giỏ hàng:", error);
-        setCartItemsCount(0);
-      }
-    } else {
-      setCartItemsCount(0);
-    }
-  }, []); // Chạy một lần khi component mount
 
   const handleLogout = async () => {
     try {
@@ -68,7 +60,7 @@ const Header = () => {
   };
 
   return (
-    <Navbar expand="lg" className="bg-navy shadow-sm py-3 headertop">
+    <Navbar sticky="top" expand="lg" className="bg-navy shadow-sm py-3 headertop">
       <Container>
         <Navbar.Brand as={Link} to="/" className="fw-bold text-light d-flex align-items-center">
           <FaPizzaSlice size={24} className="me-2" />
@@ -114,11 +106,17 @@ const Header = () => {
               </Dropdown>
             )}
 
-            <Nav.Link as={Link} to="/cart" className="text-light position-relative ms-3">
-              <FaShoppingCart size={20} />
-              {cartItemsCount > 0 && (
-                <Badge pill bg="danger" className="position-absolute top-0 start-100 translate-middle">
-                  {cartItemsCount}
+            <Nav.Link as={Link} to="/cart" className="text-light position-relative ms-3 cart-nav-icon" title="Giỏ hàng">
+              <FaShoppingCart size={22} />
+              {totalItems > 0 && (
+                <Badge
+                  pill
+                  bg="danger"
+                  className={`position-absolute top-0 start-100 translate-middle cart-counter-badge ${
+                    isBumping ? 'cart-badge-bounce' : ''
+                  }`}
+                >
+                  {totalItems}
                 </Badge>
               )}
             </Nav.Link>

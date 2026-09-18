@@ -5,15 +5,16 @@ import axios from "axios";
 import "../../css/detail.css";
 import Swal from "sweetalert2";
 import { Domain } from "../../services/Domain";
+import { useCart } from "../../context/CartContext";
 
 const ProductDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { addToCart } = useCart();
   const [product, setProduct] = useState(null);
   const [quantity, setQuantity] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [cart, setCart] = useState([]);
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -38,42 +39,18 @@ const ProductDetail = () => {
     };
 
     fetchProduct();
-
-    // Load cart from localStorage on mount
-    const savedCart = localStorage.getItem("pizza4ps_cart");
-    if (savedCart) {
-      try {
-        const parsedCart = JSON.parse(savedCart);
-        setCart(Array.isArray(parsedCart) ? parsedCart : []);
-      } catch (error) {
-        console.error("Error parsing cart data:", error);
-        setCart([]);
-      }
-    }
   }, [id]);
 
   const handleAddToCart = () => {
     if (!product) return;
 
-    const existingItemIndex = cart.findIndex((item) => item.productId === product.productId);
-    let updatedCart;
-
-    if (existingItemIndex >= 0) {
-      updatedCart = [...cart];
-      updatedCart[existingItemIndex].quantity += quantity;
-    } else {
-      updatedCart = [...cart, { ...product, quantity }];
-    }
-
-    setCart(updatedCart);
-    localStorage.setItem("pizza4ps_cart", JSON.stringify(updatedCart));
-    console.log("Cart updated in localStorage:", updatedCart);
+    addToCart(product, quantity);
 
     Swal.fire({
       position: "top-end",
       icon: "success",
       title: "Đã thêm vào giỏ hàng",
-      text: `${quantity} ${product.productName} đã được thêm vào giỏ hàng`,
+      text: `${quantity} ${product.productName || product.name || 'sản phẩm'} đã được thêm vào giỏ hàng`,
       showConfirmButton: false,
       timer: 1500,
       toast: true,
