@@ -1,320 +1,472 @@
 import "../../css/style.css";
 import "../../css/dataTables.bootstrap5.min.css";
 import "../../AdminManager.css";
-import "./UserManager.css"; // Thêm file CSS mới
+import "./UserManager.css";
 import {
   GetUserList,
   PostBanUser,
   PostUnbanUser,
 } from "../../../../../services/ApiService";
-import { useEffect, useState, useCallback } from "react";
-// import { Link } from "react-router-dom";
-import { Icon } from "@mui/material";
+import { useEffect, useState, useCallback, useMemo } from "react";
+import {
+  FaUsers,
+  FaUserCheck,
+  FaUserSlash,
+  FaUserShield,
+  FaSearch,
+  FaUserPlus,
+  FaEye,
+  FaBan,
+  FaCheck,
+  FaSyncAlt,
+  FaEnvelope,
+  FaMapMarkerAlt
+} from "react-icons/fa";
 import ReactPaginate from "react-paginate";
 import Swal from "sweetalert2";
 import UserDetailModal from "./UserDetailModal";
 import UserAddModal from "./UserAddModal";
 
 export default function UserManager() {
-  // State quản lý dữ liệu
   const [users, setUsers] = useState([]);
-  const [totalUsers, setTotalUsers] = useState(0);
+  const [filteredUsers, setFilteredUsers] = useState([]);
   const [currentPage, setCurrentPage] = useState(0);
-  const [itemsPerPage] = useState(10);
+  const [itemsPerPage] = useState(8);
   const [refresh, setRefresh] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("ALL");
+  const [roleFilter, setRoleFilter] = useState("ALL");
+  const [loading, setLoading] = useState(false);
 
-  // State quản lý modal
+  // Modal State
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
 
-  // Hàm fetch dữ liệu
+  // Fetch Users
   const fetchUsers = useCallback(async () => {
+    setLoading(true);
     try {
       const response = await GetUserList();
       const usersData = Array.isArray(response.data)
         ? response.data
-        : Array.isArray(response.data?.data) ? response.data.data : [];
+        : (Array.isArray(response.data?.data) ? response.data.data : []);
       setUsers(usersData);
-      setTotalUsers(usersData.length);
+      setFilteredUsers(usersData);
     } catch (error) {
       console.error("Lỗi khi lấy danh sách người dùng:", error);
       setUsers([]);
-      setTotalUsers(0);
+      setFilteredUsers([]);
       Swal.fire({
         icon: "error",
         title: "Lỗi",
         text: "Không thể tải danh sách người dùng",
       });
+    } finally {
+      setLoading(false);
     }
   }, []);
 
-  // Gọi API khi component mount hoặc khi refresh thay đổi
   useEffect(() => {
     fetchUsers();
   }, [fetchUsers, refresh]);
 
-  // Xử lý thay đổi trạng thái người dùng
+  // KPI Stats
+  const stats = useMemo(() => {
+    const total = users.length;
+    const active = users.filter((u) => u.status === "ACTIVE").length;
+    const banned = users.filter((u) => u.status === "BANNED").length;
+    const admins = users.filter((u) => u.role === "ADMIN").length;
+    return { total, active, banned, admins };
+  }, [users]);
+
+  // Filtering
+  useEffect(() => {
+    let filtered = users;
+
+    if (searchTerm.trim()) {
+      const term = searchTerm.toLowerCase().trim();
+      filtered = filtered.filter((u) => {
+        const nameMatch = u.name?.toLowerCase().includes(term);
+        const emailMatch = u.email?.toLowerCase().includes(term);
+        const idMatch = String(u.id || "").includes(term);
+        const addressMatch = u.address?.toLowerCase().includes(term);
+        return nameMatch || emailMatch || idMatch || addressMatch;
+      });
+    }
+
+    if (statusFilter !== "ALL") {
+      filtered = filtered.filter((u) => u.status === statusFilter);
+    }
+
+    if (roleFilter !== "ALL") {
+      filtered = filtered.filter((u) => u.role === roleFilter);
+    }
+
+    setFilteredUsers(filtered);
+    setCurrentPage(0);
+  }, [searchTerm, statusFilter, roleFilter, users]);
+
+  // Ban / Unban
   const handleChangeStatus = async (id, action) => {
     const currentUser = users.find((u) => u.id === id);
     if (!currentUser) return;
 
-    let apiCall, successMessage;
-    if (action === "ban") {
-      apiCall = PostBanUser(id);
-      successMessage = "Đã cấm người dùng thành công";
-    } else if (action === "unban") {
-      apiCall = PostUnbanUser(id);
-      successMessage = "Đã bỏ cấm người dùng thành công";
-    }
-
+    const isBan = action === "ban";
     const result = await Swal.fire({
-      title: "Xác nhận thay đổi",
-      text: `Bạn chắc chắn muốn ${action === "ban" ? "cấm" : "bỏ cấm"} người dùng này?`,
-      icon: "question",
+      title: isBan ? "Khóa tài khoản?" : "Mở khóa tài khoản?",
+      html: `Bạn có chắc muốn ${isBan ? "khóa quyền truy cập" : "kích hoạt lại tài khoản"} của <b>${currentUser.name || currentUser.email}</b>?`,
+      icon: isBan ? "warning" : "question",
       showCancelButton: true,
-      confirmButtonColor: "#3085d6",
-      cancelButtonColor: "#d33",
-      confirmButtonText: "Đồng ý",
+      confirmButtonColor: isBan ? "#ef4444" : "#10b981",
+      cancelButtonColor: "#64748b",
+      confirmButtonText: isBan ? "Khóa tài khoản" : "Mở khóa",
       cancelButtonText: "Hủy",
     });
 
     if (result.isConfirmed) {
       try {
-        const response = await apiCall;
-        if (response.status === 200) {
-          const newStatus = action === "ban" ? "BANNED" : "ACTIVE";
-          setUsers(
-            users.map((user) =>
-              user.id === id ? { ...user, status: newStatus } : user
-            )
+        const response = isBan ? await PostBanUser(id) : await PostUnbanUser(id);
+        if (response.status === 200 || response.data) {
+          const newStatus = isBan ? "BANNED" : "ACTIVE";
+          setUsers((prev) =>
+            prev.map((u) => (u.id === id ? { ...u, status: newStatus } : u))
           );
           Swal.fire({
             icon: "success",
             title: "Thành công",
-            text: successMessage,
+            text: isBan ? "Đã khóa người dùng thành công" : "Đã mở khóa người dùng thành công",
             timer: 1500,
             showConfirmButton: false,
           });
-          setRefresh(!refresh); // Làm mới danh sách
         }
       } catch (error) {
-        console.error("Lỗi khi cập nhật trạng thái:", error);
+        console.error("Lỗi khi cập nhật trạng thái người dùng:", error);
         Swal.fire({
           icon: "error",
           title: "Lỗi",
-          text: error.response?.data?.message || "Cập nhật trạng thái thất bại",
+          text: error.response?.data?.message || "Thao tác thất bại",
         });
       }
     }
   };
 
-  // Xử lý mở modal chi tiết
   const handleOpenDetailModal = (userId) => {
     setSelectedUserId(userId);
     setShowDetailModal(true);
   };
 
-  const handleCloseDetailModal = () => {
-    setShowDetailModal(false);
-    setSelectedUserId(null);
-  };
-
-  // Xử lý mở và đóng modal thêm người dùng
   const handleOpenAddModal = () => setShowAddModal(true);
-  const handleCloseAddModal = () => setShowAddModal(false);
 
-  // Callback khi thêm người dùng thành công
-  const handleUserAdded = () => {
-    setRefresh(!refresh); // Làm mới danh sách sau khi thêm
-    handleCloseAddModal();
-  };
+  const handlePageClick = ({ selected }) => setCurrentPage(selected);
 
-  // Phân trang
-  const handlePageClick = ({ selected }) => {
-    setCurrentPage(selected);
-  };
-
-  // Lọc và tìm kiếm người dùng
-  const filteredUsers = users.filter(user => {
-    const matchesSearch = user.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          user.email?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === "all" || user.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
-  console.log(totalUsers);
-
-  // Tính toán người dùng hiển thị
   const offset = currentPage * itemsPerPage;
   const paginatedUsers = filteredUsers.slice(offset, offset + itemsPerPage);
   const pageCount = Math.ceil(filteredUsers.length / itemsPerPage);
 
   return (
-    <main className="user-manager-container">
-      <div className="container pt-4">
-        {/* Header */}
-        <div className="user-manager-header">
-          <div className="user-manager-title">
-            <h2>Quản lý người dùng</h2>
-            <p className="user-count">Tổng: {filteredUsers.length} người dùng</p>
+    <main className="user-manager-pro-container">
+      <div className="container-fluid px-4 py-4">
+        {/* Top Header */}
+        <div className="admin-page-hero d-flex flex-wrap justify-content-between align-items-center mb-4">
+          <div>
+            <h2 className="admin-hero-title mb-1">
+              <FaUsers className="me-2 text-warning" /> Quản Lý Người Dùng & Tài Khoản
+            </h2>
+            <p className="admin-hero-subtitle text-muted mb-0">
+              Quản trị danh sách khách hàng, nhân viên, phân quyền vai trò và bảo mật tài khoản
+            </p>
           </div>
-          <button
-            onClick={handleOpenAddModal}
-            className="btn-add-user"
-          >
-            <Icon>person_add</Icon>
-            <span>Thêm người dùng</span>
-          </button>
-        </div>
-
-        {/* Bộ lọc và tìm kiếm */}
-        <div className="user-filter-section">
-          <div className="search-box">
-            <Icon>search</Icon>
-            <input
-              type="text"
-              placeholder="Tìm kiếm theo tên hoặc email..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-          <div className="filter-group">
-            <select 
-              value={statusFilter} 
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="status-filter"
+          <div className="d-flex align-items-center gap-2 mt-3 mt-md-0">
+            <button
+              className="btn btn-outline-secondary d-flex align-items-center gap-2 px-3 py-2 shadow-sm"
+              onClick={() => setRefresh((prev) => !prev)}
+              disabled={loading}
             >
-              <option value="all">Tất cả trạng thái</option>
-              <option value="ACTIVE">Hoạt động</option>
-              <option value="BANNED">Bị cấm</option>
-            </select>
+              <FaSyncAlt className={loading ? "fa-spin" : ""} /> Làm mới
+            </button>
+            <button
+              onClick={handleOpenAddModal}
+              className="btn btn-primary d-flex align-items-center gap-2 px-3 py-2 shadow-sm"
+              style={{ background: "#c9a66b", borderColor: "#c9a66b" }}
+            >
+              <FaUserPlus /> Thêm Người Dùng
+            </button>
           </div>
         </div>
 
-        {/* Bảng người dùng */}
-        <div className="user-table-container">
-          <table className="user-table">
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>Thông tin người dùng</th>
-                <th>Email</th>
-                <th>Địa chỉ</th>
-                <th>Trạng thái</th>
-                <th>Vai trò</th>
-                <th>Thao tác</th>
-              </tr>
-            </thead>
-            <tbody>
-              {paginatedUsers.length > 0 ? (
-                paginatedUsers.map((user, index) => (
-                  <tr
-                    key={user.id}
-                    className={user.status === "BANNED" ? "banned-user" : ""}
-                  >
-                    <td className="user-index">{offset + index + 1}</td>
-                    <td className="user-info">
-                      <div className="user-avatar">
-                        {user.name ? user.name.charAt(0).toUpperCase() : "U"}
-                      </div>
-                      <div className="user-details">
-                        <div className="user-name">{user.name || "Không có"}</div>
-                        <div className="user-birthdate">{user.birthDate || "Không có"}</div>
-                      </div>
-                    </td>
-                    <td className="user-email">{user.email || "Không có"}</td>
-                    <td className="user-address">{user.address || "Không có"}</td>
-                    <td className="user-status">
-                      <span className={`status-badge ${user.status === "ACTIVE" ? "active" : "banned"}`}>
-                        {user.status === "ACTIVE" ? "Hoạt động" : "Bị cấm"}
-                      </span>
-                    </td>
-                    <td className="user-role">
-                      <span className="role-badge">{user.role || "Không xác định"}</span>
-                    </td>
-                    <td className="user-actions">
-                      <div className="action-buttons">
-                        <button
-                          onClick={() => handleOpenDetailModal(user.id)}
-                          className="btn-action btn-view"
-                          title="Xem chi tiết"
+        {/* KPI Stats Cards */}
+        <div className="row g-3 mb-4">
+          <div className="col-xl-3 col-sm-6">
+            <div className="kpi-card shadow-sm">
+              <div className="kpi-icon bg-light text-dark">
+                <FaUsers />
+              </div>
+              <div className="kpi-data">
+                <span className="kpi-label">Tổng Tài Khoản</span>
+                <h4 className="kpi-value text-dark">{stats.total}</h4>
+              </div>
+            </div>
+          </div>
+
+          <div className="col-xl-3 col-sm-6">
+            <div className="kpi-card shadow-sm">
+              <div className="kpi-icon bg-success-subtle text-success">
+                <FaUserCheck />
+              </div>
+              <div className="kpi-data">
+                <span className="kpi-label">Đang Hoạt Động</span>
+                <h4 className="kpi-value text-success">{stats.active}</h4>
+              </div>
+            </div>
+          </div>
+
+          <div className="col-xl-3 col-sm-6">
+            <div className="kpi-card shadow-sm">
+              <div className="kpi-icon bg-danger-subtle text-danger">
+                <FaUserSlash />
+              </div>
+              <div className="kpi-data">
+                <span className="kpi-label">Bị Khóa / Cấm</span>
+                <h4 className="kpi-value text-danger">{stats.banned}</h4>
+              </div>
+            </div>
+          </div>
+
+          <div className="col-xl-3 col-sm-6">
+            <div className="kpi-card shadow-sm">
+              <div className="kpi-icon bg-primary-subtle text-primary">
+                <FaUserShield />
+              </div>
+              <div className="kpi-data">
+                <span className="kpi-label">Quản Trị Viên (Admin)</span>
+                <h4 className="kpi-value text-primary">{stats.admins}</h4>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Filter Tabs & Search Controls */}
+        <div className="admin-card mb-4 shadow-sm">
+          <div className="status-tabs-container">
+            <button
+              className={`status-tab-btn ${statusFilter === "ALL" ? "active" : ""}`}
+              onClick={() => setStatusFilter("ALL")}
+            >
+              Tất cả <span className="tab-counter">{users.length}</span>
+            </button>
+            <button
+              className={`status-tab-btn ${statusFilter === "ACTIVE" ? "active" : ""}`}
+              onClick={() => setStatusFilter("ACTIVE")}
+            >
+              Hoạt động <span className="tab-counter">{stats.active}</span>
+            </button>
+            <button
+              className={`status-tab-btn ${statusFilter === "BANNED" ? "active" : ""}`}
+              onClick={() => setStatusFilter("BANNED")}
+            >
+              Bị cấm <span className="tab-counter">{stats.banned}</span>
+            </button>
+          </div>
+
+          <div className="p-3 border-top d-flex flex-wrap gap-3 align-items-center justify-content-between bg-light rounded-bottom">
+            <div className="search-box-wrapper flex-grow-1" style={{ maxWidth: "450px" }}>
+              <FaSearch className="search-icon text-muted" />
+              <input
+                type="text"
+                className="form-control ps-5 py-2 search-input-pro"
+                placeholder="Tìm theo tên, email hoặc địa chỉ..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+              {searchTerm && (
+                <button
+                  className="btn btn-sm btn-link text-muted clear-search-btn"
+                  onClick={() => setSearchTerm("")}
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+
+            <div className="d-flex align-items-center gap-2">
+              <span className="small text-muted fw-semibold">Vai trò:</span>
+              <select
+                className="form-select form-select-sm py-2 filter-select-pro"
+                value={roleFilter}
+                onChange={(e) => setRoleFilter(e.target.value)}
+                style={{ width: "160px" }}
+              >
+                <option value="ALL">Tất cả vai trò</option>
+                <option value="CUSTOMER">Khách hàng</option>
+                <option value="ADMIN">Quản trị viên</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {/* Users Table */}
+        <div className="admin-card shadow-sm overflow-hidden mb-4">
+          <div className="table-responsive">
+            <table className="table table-hover align-middle mb-0 pro-user-table">
+              <thead className="table-head-pro">
+                <tr>
+                  <th style={{ width: "70px" }}>ID</th>
+                  <th>Họ Tên & Ngày Sinh</th>
+                  <th>Email Liên Hệ</th>
+                  <th>Địa Chỉ</th>
+                  <th style={{ width: "130px" }}>Vai Trò</th>
+                  <th style={{ width: "130px" }}>Trạng Thái</th>
+                  <th style={{ width: "150px" }} className="text-center">Thao Tác</th>
+                </tr>
+              </thead>
+              <tbody>
+                {paginatedUsers.length > 0 ? (
+                  paginatedUsers.map((user) => (
+                    <tr
+                      key={user.id}
+                      className={`user-row-pro ${user.status === "BANNED" ? "table-danger opacity-75" : ""}`}
+                    >
+                      <td>
+                        <span className="order-id-badge">#{user.id}</span>
+                      </td>
+
+                      <td>
+                        <div className="d-flex align-items-center gap-2">
+                          <div className="user-avatar-pro">
+                            {user.name ? user.name.charAt(0).toUpperCase() : "U"}
+                          </div>
+                          <div>
+                            <div className="fw-bold text-dark">{user.name || "Chưa có tên"}</div>
+                            <small className="text-muted">{user.birthDate || "N/A"}</small>
+                          </div>
+                        </div>
+                      </td>
+
+                      <td>
+                        <a href={`mailto:${user.email}`} className="text-decoration-none text-dark d-flex align-items-center gap-1">
+                          <FaEnvelope className="text-muted" style={{ fontSize: "12px" }} />
+                          <span>{user.email || "N/A"}</span>
+                        </a>
+                      </td>
+
+                      <td>
+                        <div className="text-truncate" style={{ maxWidth: "220px" }} title={user.address}>
+                          <FaMapMarkerAlt className="text-danger me-1" style={{ fontSize: "11px" }} />
+                          <small className="text-muted">{user.address || "Chưa cập nhật"}</small>
+                        </div>
+                      </td>
+
+                      <td>
+                        <span
+                          className={`badge px-2 py-1 ${
+                            user.role === "ADMIN"
+                              ? "bg-primary-subtle text-primary border border-primary"
+                              : "bg-light text-dark border"
+                          }`}
                         >
-                          <Icon>visibility</Icon>
-                        </button>
-                        {user.status === "ACTIVE" ? (
+                          {user.role === "ADMIN" ? "Quản trị viên" : "Khách hàng"}
+                        </span>
+                      </td>
+
+                      <td>
+                        <span
+                          className={`custom-badge ${
+                            user.status === "ACTIVE" ? "badge-completed" : "badge-cancelled"
+                          }`}
+                        >
+                          {user.status === "ACTIVE" ? "Hoạt động" : "Bị cấm"}
+                        </span>
+                      </td>
+
+                      <td className="text-center">
+                        <div className="d-flex align-items-center justify-content-center gap-2">
                           <button
-                            onClick={() => handleChangeStatus(user.id, "ban")}
-                            className="btn-action btn-ban"
-                            title="Cấm người dùng"
+                            onClick={() => handleOpenDetailModal(user.id)}
+                            className="btn btn-sm btn-outline-info btn-action-pro"
+                            title="Xem chi tiết người dùng"
                           >
-                            <Icon>block</Icon>
+                            <FaEye /> Chi tiết
                           </button>
-                        ) : (
-                          <button
-                            onClick={() => handleChangeStatus(user.id, "unban")}
-                            className="btn-action btn-unban"
-                            title="Bỏ cấm người dùng"
-                          >
-                            <Icon>check_circle</Icon>
-                          </button>
-                        )}
+
+                          {user.status === "ACTIVE" ? (
+                            <button
+                              onClick={() => handleChangeStatus(user.id, "ban")}
+                              className="btn btn-sm btn-outline-danger btn-action-pro"
+                              title="Khóa tài khoản này"
+                            >
+                              <FaBan /> Khóa
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => handleChangeStatus(user.id, "unban")}
+                              className="btn btn-sm btn-outline-success btn-action-pro"
+                              title="Mở khóa tài khoản này"
+                            >
+                              <FaCheck /> Mở khóa
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={7} className="text-center py-5 text-muted">
+                      <div className="empty-orders-state py-4">
+                        <FaUsers style={{ fontSize: "42px", color: "#cbd5e1" }} />
+                        <h5 className="mt-2 text-secondary">Không tìm thấy người dùng nào</h5>
+                        <p className="small text-muted">Hãy thử thay đổi từ khóa tìm kiếm hoặc bộ lọc.</p>
                       </div>
                     </td>
                   </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={7} className="no-users">
-                    <div className="no-users-content">
-                      <Icon>group</Icon>
-                      <p>Không tìm thấy người dùng nào</p>
-                    </div>
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Phân trang */}
-        {pageCount > 1 && (
-          <div className="pagination-container">
-            <ReactPaginate
-              previousLabel={<Icon>chevron_left</Icon>}
-              nextLabel={<Icon>chevron_right</Icon>}
-              breakLabel="..."
-              pageCount={pageCount}
-              marginPagesDisplayed={2}
-              pageRangeDisplayed={5}
-              onPageChange={handlePageClick}
-              containerClassName="pagination"
-              activeClassName="active"
-              pageClassName="page-item"
-              pageLinkClassName="page-link"
-              previousClassName="page-item"
-              previousLinkClassName="page-link"
-              nextClassName="page-item"
-              nextLinkClassName="page-link"
-              breakClassName="page-item"
-              breakLinkClassName="page-link"
-            />
+                )}
+              </tbody>
+            </table>
           </div>
-        )}
+
+          {/* Phân trang */}
+          {pageCount > 1 && (
+            <div className="d-flex justify-content-between align-items-center p-3 border-top bg-light">
+              <span className="small text-muted">
+                Hiển thị <strong>{offset + 1}</strong> - <strong>{Math.min(offset + itemsPerPage, filteredUsers.length)}</strong> trên tổng số <strong>{filteredUsers.length}</strong> người dùng
+              </span>
+              <ReactPaginate
+                previousLabel="‹ Trước"
+                nextLabel="Sau ›"
+                breakLabel="..."
+                pageCount={pageCount}
+                marginPagesDisplayed={2}
+                pageRangeDisplayed={3}
+                onPageChange={handlePageClick}
+                containerClassName="pagination pagination-sm mb-0 gap-1"
+                activeClassName="active"
+                pageClassName="page-item"
+                pageLinkClassName="page-link rounded"
+                previousClassName="page-item"
+                previousLinkClassName="page-link rounded"
+                nextClassName="page-item"
+                nextLinkClassName="page-link rounded"
+                breakClassName="page-item"
+                breakLinkClassName="page-link rounded"
+              />
+            </div>
+          )}
+        </div>
 
         {/* Modal chi tiết người dùng */}
         <UserDetailModal
           show={showDetailModal}
-          onHide={handleCloseDetailModal}
+          onHide={() => setShowDetailModal(false)}
           userId={selectedUserId}
+          onStatusChanged={() => setRefresh((prev) => !prev)}
         />
 
         {/* Modal thêm người dùng */}
         <UserAddModal
           show={showAddModal}
-          onHide={handleCloseAddModal}
-          onUserAdded={handleUserAdded}
+          onHide={() => setShowAddModal(false)}
+          onUserAdded={() => setRefresh((prev) => !prev)}
         />
       </div>
     </main>

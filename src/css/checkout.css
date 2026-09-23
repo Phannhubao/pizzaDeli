@@ -280,3 +280,20 @@
             padding: 20px;
           }
         }
+
+        .checkout-options-tags {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 4px;
+          margin-top: 4px;
+        }
+
+        .checkout-options-tags .badge {
+          background-color: #faf5eb !important;
+          color: #8b5a2b !important;
+          border: 1px solid #e0d2c0 !important;
+          font-weight: 500;
+          font-size: 0.75rem;
+          padding: 3px 7px;
+          border-radius: 10px;
+        }

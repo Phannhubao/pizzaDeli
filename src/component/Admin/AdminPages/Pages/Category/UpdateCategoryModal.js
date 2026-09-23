@@ -1,119 +1,90 @@
-import { Icon } from "@mui/material";
-import { PutCategory } from "../../../../../services/ApiService";
 import { useState, useEffect } from "react";
-import { Modal, Button, Form } from "react-bootstrap";
+import { Modal } from "react-bootstrap";
+import { FaTags, FaSave } from "react-icons/fa";
 import Swal from "sweetalert2";
+import { PutCategory } from "../../../../../services/ApiService";
+import "../../AdminCrud.css";
 
-export default function UpdateCategoryModal({ 
-  show, 
-  onHide, 
+export default function UpdateCategoryModal({
+  show,
+  onHide,
   category,
-  onUpdateSuccess 
+  onUpdateSuccess
 }) {
   const [formData, setFormData] = useState({
     categoryName: "",
     description: ""
   });
   const [errors, setErrors] = useState({});
-  const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Validate form
+  useEffect(() => {
+    if (show && category) {
+      setFormData({
+        categoryName: category.categoryName || "",
+        description: category.description || ""
+      });
+      setErrors({});
+    }
+  }, [show, category]);
+
   const validateForm = () => {
-    const newErrors = {};
-    
+    const errs = {};
     if (!formData.categoryName.trim()) {
-      newErrors.categoryName = "Category name is required";
-    } else if (formData.categoryName.length < 3 || formData.categoryName.length > 30) {
-      newErrors.categoryName = "Name must be 3-30 characters";
+      errs.categoryName = "Tên danh mục không được để trống";
+    } else if (formData.categoryName.trim().length < 2) {
+      errs.categoryName = "Tên danh mục phải có ít nhất 2 ký tự";
     }
 
     if (!formData.description.trim()) {
-      newErrors.description = "Description is required";
-    } else if (formData.description.length < 3 || formData.description.length > 300) {
-      newErrors.description = "Description must be 3-300 characters";
+      errs.description = "Mô tả danh mục không được để trống";
+    } else if (formData.description.trim().length < 5) {
+      errs.description = "Mô tả danh mục nên có ít nhất 5 ký tự";
     }
 
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    setErrors(errs);
+    return Object.keys(errs).length === 0;
   };
-
-  // Set form data when modal opens
-  useEffect(() => {
-    if (show && category) {
-      setIsLoading(true);
-      try {
-        setFormData({
-          categoryName: category.categoryName || "",
-          description: category.description || ""
-        });
-      } catch (error) {
-        console.error("Error setting form data:", error);
-        Swal.fire({
-          icon: "error",
-          title: "Error",
-          text: "Failed to load category data",
-        });
-        onHide();
-      } finally {
-        setIsLoading(false);
-      }
-    } else {
-      setFormData({ categoryName: "", description: "" });
-      setErrors({});
-    }
-  }, [show, category, onHide]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       [name]: value
     }));
-    
     if (errors[name]) {
-      setErrors(prev => ({
-        ...prev,
-        [name]: ""
-      }));
+      setErrors((prev) => ({ ...prev, [name]: "" }));
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    if (!validateForm()) {
-      Swal.fire("Error", "Please fix the form errors", "error");
-      return;
-    }
+    if (!validateForm()) return;
 
     setIsSubmitting(true);
-    
     try {
-      const response = await PutCategory(category.categoryId, {
-        categoryName: formData.categoryName,
-        description: formData.description
+      const categoryId = category.categoryId || category.id;
+      const response = await PutCategory(categoryId, {
+        categoryName: formData.categoryName.trim(),
+        description: formData.description.trim()
       });
-      
-      if (response.status === 200) {
+
+      if (response?.status === 200 || response?.data) {
         await Swal.fire({
           icon: "success",
-          title: "Updated!",
-          text: "Category updated successfully",
-          timer: 1500,
+          title: "Đã cập nhật danh mục!",
+          timer: 1400,
           showConfirmButton: false
         });
-        onUpdateSuccess(response.data);
+        if (onUpdateSuccess) onUpdateSuccess();
         onHide();
-      } else {
-        throw new Error(response.data?.message || "Update failed");
       }
     } catch (error) {
-      console.error("Update error:", error);
+      console.error("Lỗi khi cập nhật danh mục:", error);
       Swal.fire({
         icon: "error",
-        title: "Update Failed",
-        text: error.response?.data?.message || error.message || "Failed to update category",
+        title: "Cập nhật thất bại",
+        text: error.response?.data?.message || "Có lỗi xảy ra khi cập nhật."
       });
     } finally {
       setIsSubmitting(false);
@@ -121,84 +92,92 @@ export default function UpdateCategoryModal({
   };
 
   return (
-    <Modal show={show} onHide={onHide} centered size="lg">
-      <Modal.Header closeButton>
-        <Modal.Title>
-          <Icon className="me-2">edit</Icon>
-          Update Category
-        </Modal.Title>
-      </Modal.Header>
-      
-      <Modal.Body>
-        {isLoading ? (
-          <div className="d-flex justify-content-center align-items-center" style={{ height: "200px" }}>
-            <div className="spinner-border text-primary" role="status">
-              <span className="visually-hidden">Loading...</span>
-            </div>
-            <span className="ms-2">Loading category data...</span>
+    <Modal show={show} onHide={onHide} centered>
+      <div className="modal-header-pro">
+        <div className="d-flex align-items-center justify-content-between w-100">
+          <div className="modal-title">
+            <FaTags className="text-primary me-2" />
+            <span>Cập Nhật Danh Mục #{category?.categoryId || category?.id}</span>
           </div>
-        ) : (
-          <Form onSubmit={handleSubmit}>
-            <Form.Group className="mb-3">
-              <Form.Label>Category Name *</Form.Label>
-              <Form.Control
-                type="text"
-                name="categoryName"
-                value={formData.categoryName}
-                onChange={handleInputChange}
-                isInvalid={!!errors.categoryName}
-                disabled={isSubmitting}
-              />
-              <Form.Control.Feedback type="invalid">
-                {errors.categoryName}
-              </Form.Control.Feedback>
-            </Form.Group>
+          <button
+            type="button"
+            className="btn-close"
+            onClick={onHide}
+            aria-label="Close"
+          ></button>
+        </div>
+      </div>
 
-            <Form.Group className="mb-3">
-              <Form.Label>Description *</Form.Label>
-              <Form.Control
-                as="textarea"
-                rows={4}
-                name="description"
-                value={formData.description}
-                onChange={handleInputChange}
-                isInvalid={!!errors.description}
-                disabled={isSubmitting}
-              />
-              <Form.Control.Feedback type="invalid">
-                {errors.description}
-              </Form.Control.Feedback>
-            </Form.Group>
+      <form onSubmit={handleSubmit}>
+        <div className="modal-body-pro">
+          <div className="crud-form-group">
+            <label className="crud-label">
+              Tên danh mục <span className="required">*</span>
+            </label>
+            <input
+              type="text"
+              name="categoryName"
+              className={`crud-input ${errors.categoryName ? "is-invalid" : ""}`}
+              value={formData.categoryName}
+              onChange={handleInputChange}
+            />
+            {errors.categoryName && (
+              <div className="crud-feedback-error">
+                <span>{errors.categoryName}</span>
+              </div>
+            )}
+          </div>
 
-            <div className="d-flex justify-content-end gap-2 mt-4">
-              <Button 
-                variant="secondary" 
-                onClick={onHide}
-                disabled={isSubmitting}
-              >
-                Cancel
-              </Button>
-              <Button 
-                variant="primary" 
-                type="submit"
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? (
-                  <>
-                    <span className="spinner-border spinner-border-sm me-2" role="status"></span>
-                    Updating...
-                  </>
-                ) : (
-                  <>
-                    <Icon className="me-1">save</Icon>
-                    Update
-                  </>
-                )}
-              </Button>
+          <div className="crud-form-group mb-0">
+            <label className="crud-label">
+              Mô tả danh mục <span className="required">*</span>
+            </label>
+            <textarea
+              name="description"
+              rows="4"
+              className={`crud-textarea ${errors.description ? "is-invalid" : ""}`}
+              value={formData.description}
+              onChange={handleInputChange}
+            ></textarea>
+            {errors.description && (
+              <div className="crud-feedback-error">
+                <span>{errors.description}</span>
+              </div>
+            )}
+            <div className="crud-char-counter">
+              {formData.description.length} ký tự
             </div>
-          </Form>
-        )}
-      </Modal.Body>
+          </div>
+        </div>
+
+        <div className="modal-footer-pro">
+          <button
+            type="button"
+            className="crud-btn-secondary"
+            onClick={onHide}
+            disabled={isSubmitting}
+          >
+            Hủy bỏ
+          </button>
+          <button
+            type="submit"
+            className="crud-btn-primary"
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? (
+              <>
+                <span className="spinner-border spinner-border-sm me-1"></span>
+                <span>Đang lưu...</span>
+              </>
+            ) : (
+              <>
+                <FaSave />
+                <span>Lưu thay đổi</span>
+              </>
+            )}
+          </button>
+        </div>
+      </form>
     </Modal>
   );
 }

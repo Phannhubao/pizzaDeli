@@ -13,7 +13,7 @@ import {
   Badge
 } from "react-bootstrap";
 import Swal from "sweetalert2";
-import html2pdf from "html2pdf.js";
+import html2pdf from "html2pdf.js/dist/html2pdf.bundle.min.js";
 import { GetUserByID, PutUser, GetOrdersByUserID } from "../../services/ApiService";
 import { GetDetailListByOrder } from "../../services/ApiService";
 import "../../css/profile.css";
@@ -46,6 +46,7 @@ const ProfilePage = () => {
 // };
   // Lấy thông tin user + đơn hàng
   useEffect(() => {
+    window.scrollTo(0, 0);
     const fetchData = async () => {
       try {
         const userRes = await GetUserByID(userId);
@@ -345,7 +346,21 @@ const handleExportPDF = async () => {
                       <div>
                         <strong>${item.produc_name || 'Không có tên'}</strong>
                         <br>
-                        <small style="color: #6c757d;">Mã SP: ${item.productId || 'N/A'}</small>
+                        <small style="color: #6c757d;">Mã SP: #${item.productId || 'N/A'}</small>
+                        ${item.options ? `
+                          <div style="margin-top: 5px;">
+                            ${item.options.split('|').map(opt => `
+                              <span style="display: inline-block; background: #fff3cd; color: #856404; border: 1px solid #ffeeba; border-radius: 4px; padding: 2px 6px; font-size: 11px; margin-right: 4px; margin-bottom: 3px;">
+                                ${opt.trim()}
+                              </span>
+                            `).join('')}
+                          </div>
+                        ` : ''}
+                        ${item.note ? `
+                          <div style="margin-top: 3px; font-size: 11px; color: #6c757d; font-style: italic;">
+                            Ghi chú: ${item.note}
+                          </div>
+                        ` : ''}
                       </div>
                     </td>
                     <td style="padding: 12px; text-align: center; border-bottom: 1px solid #e9ecef;">
@@ -534,9 +549,32 @@ const handleExportPDF = async () => {
                 </td>
                 <td>
                   <div>
-                    <strong>{item.produc_name || "Không có tên"}</strong>
+                    <strong className="text-dark fs-6">{item.produc_name || "Không có tên"}</strong>
                     <br />
-                    <small className="text-muted">Mã SP: {item.productId || "N/A"}</small>
+                    <small className="text-muted">Mã SP: #{item.productId || "N/A"}</small>
+
+                    {/* Hiển thị Tùy chọn bánh: Size, Đế, Topping */}
+                    {item.options && (
+                      <div className="mt-2 d-flex flex-wrap gap-1">
+                        {item.options.split('|').map((opt, i) => (
+                          <span 
+                            key={i} 
+                            className="badge bg-warning-subtle text-dark border border-warning"
+                            style={{ fontSize: "11px", fontWeight: "500", padding: "4px 8px", borderRadius: "6px" }}
+                          >
+                            {opt.trim()}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Hiển thị Ghi chú món nếu có */}
+                    {item.note && (
+                      <div className="mt-1 small text-secondary fst-italic">
+                        <i className="fas fa-sticky-note me-1 text-warning"></i>
+                        Ghi chú: {item.note}
+                      </div>
+                    )}
                   </div>
                 </td>
                 <td className="text-center">

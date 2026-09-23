@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { FaCheckCircle, FaTimesCircle, FaSpinner, FaHome, FaShoppingCart } from "react-icons/fa";
 import axios from "axios";
 import '../../css/vnpay-return.css';
+import { Domain } from "../../services/Domain";
 
 const VNPayReturn = () => {
   const navigate = useNavigate();
@@ -14,7 +15,6 @@ const VNPayReturn = () => {
   // Thêm biến ref để theo dõi đã xử lý chưa
   const isProcessed = useRef(false);
 
-  const Domain = process.env.REACT_APP_API_URL || "https://deli-api.onrender.com";
 
   const createOrderAfterPayment = useCallback(async (pendingOrder) => {
     try {
@@ -58,14 +58,16 @@ const VNPayReturn = () => {
       }
       orderId = Number(orderId);
 
-      // 3. Tạo OrderDetail
+      // 3. Tạo OrderDetail kèm options và note
       const orderDetailList = pendingOrder.cartItems.map(item => ({
         quantity: item.quantity || 1,
         price: item.price || 0,
-        produc_name: item.productName || "Unknown Product",
+        produc_name: item.productName || item.name || "Unknown Product",
+        options: item.optionTags && item.optionTags.length > 0 ? item.optionTags.join(' | ') : null,
+        note: item.options?.note || null,
         image: item.image?.startsWith("../") ? item.image.substring(2) : item.image || "img/default-product.png",
         orderId: orderId,
-        productId: item.productId,
+        productId: item.productId || item.id,
         canFeedBack: false
       }));
 

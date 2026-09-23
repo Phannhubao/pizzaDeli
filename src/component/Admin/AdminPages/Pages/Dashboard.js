@@ -98,7 +98,7 @@ export default function Dashboard() {
   };
 
   return (
-    <main className="dashboard-main mt-5 pt-3">
+    <main className="dashboard-main py-4">
       <div className="container-fluid">
         {/* Header */}
         <div className="row">

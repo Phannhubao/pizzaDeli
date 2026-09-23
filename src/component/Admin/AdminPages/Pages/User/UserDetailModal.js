@@ -1,30 +1,36 @@
 import { useEffect, useState, useCallback } from "react";
-import { Modal, Button } from "react-bootstrap";
-import { Icon } from "@mui/material";
-import { GetUserByID } from "../../../../../services/ApiService";
+import { Modal } from "react-bootstrap";
+import {
+  FaUser,
+  FaEnvelope,
+  FaCalendarAlt,
+  FaMapMarkerAlt,
+  FaBan,
+  FaUnlockAlt
+} from "react-icons/fa";
 import Swal from "sweetalert2";
+import {
+  GetUserByID,
+  PostBanUser,
+  PostUnbanUser
+} from "../../../../../services/ApiService";
+import "../../AdminCrud.css";
 
-const UserDetailModal = ({ show, onHide, userId }) => {
+const UserDetailModal = ({ show, onHide, userId, onStatusChanged }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
 
-  // Fetch chi tiết người dùng
   const fetchUserDetails = useCallback(async () => {
+    if (!userId) return;
     setLoading(true);
     try {
       const response = await GetUserByID(userId);
       if (response.status === 200) {
         setUser(response.data);
-      } else {
-        throw new Error("Không thể tải chi tiết người dùng");
       }
     } catch (error) {
-      console.error("Lỗi khi lấy chi tiết người dùng:", error);
-      Swal.fire({
-        icon: "error",
-        title: "Lỗi",
-        text: error.response?.data?.message || error.message,
-      });
+      console.error("Lỗi khi tải chi tiết người dùng:", error);
     } finally {
       setLoading(false);
     }
@@ -38,81 +44,199 @@ const UserDetailModal = ({ show, onHide, userId }) => {
     }
   }, [show, userId, fetchUserDetails]);
 
+  const handleToggleBan = async () => {
+    if (!user) return;
+    const isBanning = user.status === "ACTIVE";
+
+    const confirm = await Swal.fire({
+      title: isBanning ? "Khóa tài khoản này?" : "Mở khóa tài khoản?",
+      text: isBanning
+        ? "Người dùng này sẽ không thể đăng nhập hoặc đặt hàng nữa."
+        : "Người dùng sẽ có thể đăng nhập và mua sắm lại bình thường.",
+      icon: isBanning ? "warning" : "question",
+      showCancelButton: true,
+      confirmButtonColor: isBanning ? "#ef4444" : "#10b981",
+      cancelButtonColor: "#64748b",
+      confirmButtonText: isBanning ? "Khóa ngay" : "Mở khóa",
+      cancelButtonText: "Hủy"
+    });
+
+    if (!confirm.isConfirmed) return;
+
+    setActionLoading(true);
+    try {
+      if (isBanning) {
+        await PostBanUser(userId);
+      } else {
+        await PostUnbanUser(userId);
+      }
+
+      Swal.fire({
+        icon: "success",
+        title: isBanning ? "Đã khóa tài khoản" : "Đã mở khóa tài khoản",
+        timer: 1400,
+        showConfirmButton: false
+      });
+
+      await fetchUserDetails();
+      if (onStatusChanged) onStatusChanged();
+    } catch (err) {
+      console.error("Lỗi khi đổi trạng thái user:", err);
+      Swal.fire("Lỗi", "Không thể thực hiện thao tác. Vui lòng thử lại sau.", "error");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const getInitials = (name) => {
+    if (!name) return "U";
+    return name
+      .trim()
+      .split(" ")
+      .map((part) => part[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
   return (
-    <Modal show={show} onHide={onHide} size="lg" centered>
-      <Modal.Header closeButton className="border-0 pb-0">
-        <Modal.Title className="fw-bold">
-          {loading ? "Đang tải..." : `Chi tiết người dùng #${userId}`}
-        </Modal.Title>
-      </Modal.Header>
-      
-      <Modal.Body className="pt-0">
+    <Modal show={show} onHide={onHide} centered>
+      <div className="modal-header-pro">
+        <div className="d-flex align-items-center justify-content-between w-100">
+          <div className="modal-title">
+            <FaUser className="text-primary me-2" />
+            <span>Hồ Sơ Người Dùng #{userId}</span>
+          </div>
+          <button
+            type="button"
+            className="btn-close"
+            onClick={onHide}
+            aria-label="Close"
+          ></button>
+        </div>
+      </div>
+
+      <div className="modal-body-pro">
         {loading ? (
           <div className="text-center py-5">
-            <div className="spinner-border text-primary" role="status">
-              <span className="visually-hidden">Loading...</span>
-            </div>
-            <p className="mt-2">Đang tải thông tin người dùng...</p>
+            <div className="spinner-border text-primary" role="status"></div>
+            <p className="mt-2 text-muted small">Đang tải thông tin hồ sơ...</p>
           </div>
         ) : user ? (
-          <div className="row g-4">
-            {/* Cột thông tin */}
-            <div className="col-12">
-              <div className="user-details">
-                <h2 className="mb-3 fw-bold">{user.name || "Không có tên"}</h2>
-                
-                {/* Thông tin cơ bản */}
-                <div className="basic-info mb-4">
-                  <div className="d-flex align-items-center mb-2">
-                    <Icon className="me-2 text-muted">email</Icon>
-                    <span>
-                      <strong>Email:</strong> {user.email || "Không có"}
-                    </span>
-                  </div>
-                  <div className="d-flex align-items-center mb-2">
-                    <Icon className="me-2 text-muted">cake</Icon>
-                    <span>
-                      <strong>Ngày sinh:</strong> {user.birthDate ? new Date(user.birthDate).toLocaleDateString('vi-VN') : "Không có"}
-                    </span>
-                  </div>
-                  <div className="d-flex align-items-center mb-2">
-                    <Icon className="me-2 text-muted">location_on</Icon>
-                    <span>
-                      <strong>Địa chỉ:</strong> {user.address || "Không có"}
-                    </span>
-                  </div>
-                  <div className="d-flex align-items-center mb-2">
-                    <Icon className="me-2 text-muted">shield</Icon>
-                    <span>
-                      <strong>Vai trò:</strong> {user.role || "Không xác định"}
-                    </span>
-                  </div>
-                  <div className="d-flex align-items-center">
-                    <Icon className="me-2 text-muted">visibility</Icon>
-                    <span>
-                      <strong>Trạng thái:</strong>{" "}
-                      <span className={`badge ${user.status === "ACTIVE" ? 'bg-success' : 'bg-secondary'}`}>
-                        {user.status === "ACTIVE" ? "Hoạt động" : "Bị cấm"}
-                      </span>
-                    </span>
+          <div>
+            {/* User Profile Hero */}
+            <div className="d-flex align-items-center gap-3 p-3 bg-light rounded-4 border mb-4">
+              <div
+                style={{
+                  width: "60px",
+                  height: "60px",
+                  borderRadius: "50%",
+                  background:
+                    user.role === "ADMIN"
+                      ? "linear-gradient(135deg, #ef4444, #b91c1c)"
+                      : "linear-gradient(135deg, #3b82f6, #1d4ed8)",
+                  color: "white",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: "1.35rem",
+                  fontWeight: "bold",
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.15)"
+                }}
+              >
+                {getInitials(user.name)}
+              </div>
+
+              <div>
+                <h5 className="fw-bold mb-1 text-dark">{user.name || "Chưa có tên"}</h5>
+                <div className="d-flex align-items-center gap-2">
+                  <span
+                    className={`badge px-2 py-1 ${
+                      user.role === "ADMIN"
+                        ? "bg-danger-subtle text-danger border border-danger-subtle"
+                        : "bg-primary-subtle text-primary border border-primary-subtle"
+                    }`}
+                  >
+                    {user.role === "ADMIN" ? "Quản trị viên" : "Khách hàng"}
+                  </span>
+
+                  <span
+                    className={`badge px-2 py-1 ${
+                      user.status === "ACTIVE"
+                        ? "bg-success-subtle text-success border border-success-subtle"
+                        : "bg-secondary-subtle text-secondary border"
+                    }`}
+                  >
+                    {user.status === "ACTIVE" ? "Đang hoạt động" : "Đã bị khóa"}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* User Details Grid */}
+            <div className="list-group list-group-flush rounded-3 border">
+              <div className="list-group-item d-flex align-items-center py-3">
+                <FaEnvelope className="text-muted me-3" style={{ fontSize: "1.1rem" }} />
+                <div>
+                  <div className="text-muted small">Địa chỉ Email</div>
+                  <div className="fw-semibold text-dark">{user.email || "---"}</div>
+                </div>
+              </div>
+
+              <div className="list-group-item d-flex align-items-center py-3">
+                <FaMapMarkerAlt className="text-muted me-3" style={{ fontSize: "1.1rem" }} />
+                <div>
+                  <div className="text-muted small">Địa chỉ nhận hàng</div>
+                  <div className="fw-semibold text-dark">{user.address || "Chưa cập nhật"}</div>
+                </div>
+              </div>
+
+              <div className="list-group-item d-flex align-items-center py-3">
+                <FaCalendarAlt className="text-muted me-3" style={{ fontSize: "1.1rem" }} />
+                <div>
+                  <div className="text-muted small">Ngày sinh</div>
+                  <div className="fw-semibold text-dark">
+                    {user.birthDate
+                      ? new Date(user.birthDate).toLocaleDateString("vi-VN")
+                      : "Chưa cập nhật"}
                   </div>
                 </div>
               </div>
             </div>
           </div>
         ) : (
-          <div className="text-center py-5">
-            <Icon fontSize="large" className="text-muted">error</Icon>
-            <p className="mt-2 text-muted">Không tìm thấy thông tin người dùng</p>
+          <div className="text-center py-5 text-muted">
+            Không tìm thấy thông tin người dùng
           </div>
         )}
-      </Modal.Body>
-      
-      <Modal.Footer className="border-0">
-        <Button variant="secondary" onClick={onHide}>
-          <Icon className="me-1">close</Icon> Đóng
-        </Button>
-      </Modal.Footer>
+      </div>
+
+      <div className="modal-footer-pro">
+        <button type="button" className="crud-btn-secondary" onClick={onHide}>
+          Đóng
+        </button>
+
+        {user && user.role !== "ADMIN" && (
+          <button
+            type="button"
+            className={user.status === "ACTIVE" ? "crud-btn-danger" : "crud-btn-primary"}
+            onClick={handleToggleBan}
+            disabled={actionLoading}
+          >
+            {user.status === "ACTIVE" ? (
+              <>
+                <FaBan />
+                <span>Khóa tài khoản</span>
+              </>
+            ) : (
+              <>
+                <FaUnlockAlt />
+                <span>Mở khóa tài khoản</span>
+              </>
+            )}
+          </button>
+        )}
+      </div>
     </Modal>
   );
 };

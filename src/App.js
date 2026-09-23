@@ -33,9 +33,12 @@ import CheckoutPage from "./component/Client/CheckoutPage";
 import ProfilePage from "./component/Client/ProfilePage";
 import VNPayReturn from './component/Client/VNPayReturn';
 
+import ScrollToTop from "./ScrollToTop";
+
 function App() {
   return (
     <Router>
+      <ScrollToTop />
       <CartProvider>
         <AuthProvider>
           <Routes>
@@ -45,7 +48,7 @@ function App() {
               element={
                 <>
                   <Header />
-                  <main className="container">
+                  <main className="client-main-wrapper">
                     <Routes>
                       <Route path="/" element={<Home />} />
                       <Route path="/contact" element={<Contact />} />

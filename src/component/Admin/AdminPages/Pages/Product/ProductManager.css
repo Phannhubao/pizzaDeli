@@ -1,272 +1,60 @@
-/* Import Tailwind CSS */
-@import "https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css";
+/* Modern SaaS Product Management Stylesheet */
 
-.product-manager-container {
+.product-manager-pro-container {
   background-color: #f8fafc;
   min-height: 100vh;
-  padding: 2rem 1rem;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  color: #1e293b;
 }
 
-.container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 1rem;
+/* Product thumbnail */
+.product-thumb-pro {
+  width: 48px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-/* Header styling */
-.header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 2rem;
-  padding: 1rem;
-  background: linear-gradient(90deg, #3b82f6, #60a5fa);
-  border-radius: 0.75rem;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+.product-thumb-pro:hover {
+  transform: scale(1.15);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 5;
 }
 
-.header h2 {
-  font-size: 1.875rem;
-  font-weight: 700;
-  color: white;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.header .text-secondary {
-  color: #e2e8f0;
-  font-size: 1rem;
-}
-
-.header .btn-danger {
-  background-color: #ef4444;
-  color: white;
-  padding: 0.5rem 1rem;
-  border-radius: 0.5rem;
-  transition: background-color 0.3s ease;
-}
-
-.header .btn-danger:hover {
-  background-color: #dc2626;
-}
-
-/* Search bar styling */
-.search-container {
-  margin-bottom: 1.5rem;
-  display: flex;
-  gap: 1rem;
-  align-items: center;
-}
-
-.search-input {
-  flex: 1;
-  padding: 0.75rem;
-  border: 1px solid #d1d5db;
-  border-radius: 0.375rem;
-  font-size: 1rem;
-  outline: none;
-  transition: border-color 0.3s ease;
-}
-
-.search-input:focus {
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-}
-
-.search-select {
-  padding: 0.75rem;
-  border: 1px solid #d1d5db;
-  border-radius: 0.375rem;
-  font-size: 1rem;
-  background-color: white;
-  outline: none;
-  min-width: 200px;
-}
-
-/* Table styling */
-.table-responsive {
-  background: white;
-  border-radius: 0.75rem;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-  overflow: hidden;
-}
-
-.table {
-  width: 100%;
-  border-collapse: separate;
-  border-spacing: 0;
-}
-
-.table thead {
-  background: #1e3a8a;
-  color: white;
-}
-
-.table th {
-  padding: 1rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  font-size: 0.875rem;
-  letter-spacing: 0.05em;
-}
-
-.table tbody tr {
-  transition: background-color 0.2s ease;
-}
-
-.table tbody tr:hover {
-  background-color: #f1f5f9;
-}
-
-.table tbody td {
-  padding: 1rem;
-  vertical-align: middle;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.table-secondary {
-  background-color: #f3f4f6;
-  opacity: 0.8;
-}
-
-/* Button styling */
-.btn {
-  padding: 0.5rem;
-  border-radius: 0.375rem;
-  transition: all 0.3s ease;
-}
-
-.btn-primary {
-  background-color: #2563eb;
-  color: white;
-}
-
-.btn-primary:hover {
-  background-color: #1d4ed8;
-}
-
-.btn-info {
-  background-color: #06b6d4;
-}
-
-.btn-info:hover {
-  background-color: #0891b2;
-}
-
-.btn-success {
-  background-color: #16a34a;
-}
-
-.btn-success:hover {
-  background-color: #15803d;
-}
-
-.btn-danger {
-  background-color: #ef4444;
-}
-
-.btn-danger:hover {
-  background-color: #dc2626;
-}
-
-/* Switch styling */
-.form-check-input {
-  width: 3em !important;
-  height: 1.5em !important;
+/* Switch */
+.pro-switch {
   cursor: pointer;
-  background-color: #d1d5db;
-  transition: background-color 0.3s ease;
+  width: 2.75em !important;
+  height: 1.4em !important;
 }
 
-.form-check-input:checked {
-  background-color: #16a34a;
+.pro-switch:checked {
+  background-color: #10b981 !important;
+  border-color: #10b981 !important;
 }
 
-/* Pagination styling */
-.pagination-container {
-  display: flex;
-  justify-content: center;
-  gap: 0.5rem;
-  margin-top: 2rem;
-}
-
-.pagination {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.page-item .page-link {
-  color: #3b82f6;
-  background-color: white;
-  border: 1px solid #d1d5db;
-  padding: 0.5rem 1rem;
-  border-radius: 0.375rem;
-  transition: all 0.3s ease;
-}
-
-.page-item.active .page-link {
-  background-color: #3b82f6;
-  color: white;
-  border-color: #3b82f6;
-}
-
-.page-item .page-link:hover {
-  background-color: #eff6ff;
-}
-
-/* Modal styling */
-.modal-content {
-  border-radius: 0.75rem;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-}
-
-.modal-header {
-  background-color: #3b82f6;
-  color: white;
-  border-top-left-radius: 0.75rem;
-  border-top-right-radius: 0.75rem;
-}
-
-.modal-footer {
-  border-top: 1px solid #e5e7eb;
-}
-
-/* No products styling */
-.no-products-content {
-  display: flex;
-  flex-direction: column;
+/* Action buttons */
+.btn-action-pro {
+  padding: 4px 8px;
+  font-size: 0.85rem;
+  display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
-  color: #6b7280;
+  justify-content: center;
+  border-radius: 6px;
+  transition: transform 0.15s ease;
 }
 
-.no-products-icon {
-  font-size: 2.5rem;
-  color: #9ca3af;
+.btn-action-pro:hover {
+  transform: translateY(-1px);
 }
 
-/* Responsive adjustments */
-@media (max-width: 768px) {
-  .header h2 {
-    font-size: 1.5rem;
-  }
+.product-row-pro td {
+  padding: 0.85rem 0.75rem;
+  border-color: #f1f5f9;
+}
 
-  .table th,
-  .table td {
-    font-size: 0.875rem;
-    padding: 0.75rem;
-  }
-
-  .btn {
-    padding: 0.4rem;
-  }
-
-  .pagination {
-    flex-wrap: wrap;
-  }
-
-  .search-container {
-    flex-direction: column;
-    align-items: stretch;
-  }
+.product-row-pro:hover {
+  background-color: #f8fafc !important;
 }

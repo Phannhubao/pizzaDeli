@@ -2,24 +2,44 @@ import "../../css/style.css";
 import "../../css/dataTables.bootstrap5.min.css";
 import "../../AdminManager.css";
 import "./OrderManager.css";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { GetAllOrders, PutOrderStatus, GetPaymentList } from "../../../../../services/ApiService";
 import { Icon } from "@mui/material";
+import {
+  FaShoppingBag,
+  FaClock,
+  FaUtensils,
+  FaCheckCircle,
+  FaTimesCircle,
+  FaSearch,
+  FaSyncAlt,
+  FaEye,
+  FaMoneyBillWave,
+  FaPhoneAlt,
+  FaMapMarkerAlt
+} from "react-icons/fa";
 import Swal from "sweetalert2";
 import ReactPaginate from "react-paginate";
+import AdminOrderDetailModal from "./AdminOrderDetailModal";
 
 export default function OrderManager() {
   const [orders, setOrders] = useState([]);
   const [filteredOrders, setFilteredOrders] = useState([]);
-  const [totalOrders, setTotalOrders] = useState(0);
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("ALL");
+  const [paymentFilter, setPaymentFilter] = useState("ALL");
   const [currentPage, setCurrentPage] = useState(0);
-  const [itemsPerPage] = useState(12);
+  const [itemsPerPage] = useState(10);
   const [refresh, setRefresh] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  // Modal State
+  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [showDetailModal, setShowDetailModal] = useState(false);
 
   // fetch orders + payment status
   const fetchOrders = useCallback(async () => {
+    setLoading(true);
     try {
       const response = await GetAllOrders();
       let ordersData = Array.isArray(response)
@@ -34,33 +54,34 @@ export default function OrderManager() {
 
       const ordersWithPayment = ordersData.map((order) => {
         const orderId = order.id || order.orderId;
-
-        // lọc payment theo orderId
         const payments = paymentList.filter((p) => p.orderId === orderId);
-
-        // nếu có ít nhất 1 payment.status === true => đã thanh toán
         const hasPaid = payments.some((p) => p.status === true);
 
         return {
           ...order,
           id: orderId,
-          paymentStatus: hasPaid ? "Đã thanh toán online" : "Chưa thanh toán(Ship code)",
+          orderId: orderId,
+          paymentStatus: hasPaid ? "Đã thanh toán online" : "Thanh toán khi nhận hàng (COD)",
+          hasPaidOnline: hasPaid
         };
       });
 
+      // Sắp xếp đơn mới nhất lên đầu
+      ordersWithPayment.sort((a, b) => (b.id || 0) - (a.id || 0));
+
       setOrders(ordersWithPayment);
       setFilteredOrders(ordersWithPayment);
-      setTotalOrders(ordersWithPayment.length);
     } catch (error) {
       console.error("Lỗi khi lấy danh sách đơn hàng:", error);
       setOrders([]);
       setFilteredOrders([]);
-      setTotalOrders(0);
       Swal.fire({
         icon: "error",
         title: "Lỗi",
         text: "Không thể tải danh sách đơn hàng",
       });
+    } finally {
+      setLoading(false);
     }
   }, []);
 
@@ -68,34 +89,71 @@ export default function OrderManager() {
     fetchOrders();
   }, [fetchOrders, refresh]);
 
-  // filter orders
+  // KPI Calculations
+  const stats = useMemo(() => {
+    const total = orders.length;
+    const pending = orders.filter((o) => o.status === "PENDING").length;
+    const processing = orders.filter((o) => o.status === "PROCESSING").length;
+    const completed = orders.filter((o) => o.status === "COMPLETED").length;
+    const cancelled = orders.filter((o) => o.status === "CANCELLED").length;
+    const revenue = orders
+      .filter((o) => o.status === "COMPLETED")
+      .reduce((sum, o) => sum + (Number(o.totalPrice) || 0), 0);
+
+    return { total, pending, processing, completed, cancelled, revenue };
+  }, [orders]);
+
+  // Filter orders
   useEffect(() => {
     let filtered = orders;
-    if (searchTerm) {
-      filtered = filtered.filter((item) =>
-        item.username?.toLowerCase().includes(searchTerm.toLowerCase())
-      );
+
+    // Search filter (ID, username, phone, address)
+    if (searchTerm.trim()) {
+      const term = searchTerm.toLowerCase().trim();
+      filtered = filtered.filter((item) => {
+        const idMatch = String(item.id || "").includes(term);
+        const nameMatch = item.username?.toLowerCase().includes(term);
+        const phoneMatch = item.phone_number?.toLowerCase().includes(term);
+        const addressMatch = item.address?.toLowerCase().includes(term);
+        return idMatch || nameMatch || phoneMatch || addressMatch;
+      });
     }
-    if (statusFilter) {
+
+    // Status tab filter
+    if (statusFilter !== "ALL") {
       filtered = filtered.filter((item) => item.status === statusFilter);
     }
-    setFilteredOrders(filtered);
-    setTotalOrders(filtered.length);
-    setCurrentPage(0);
-  }, [searchTerm, statusFilter, orders]);
 
-  const getStatusClass = (status) => {
-    switch (status) {
-      case "PROCESSING": return "status-processing";
-      case "PENDING": return "status-pending";
-      case "COMPLETED": return "status-completed";
-      case "CANCELLED": return "status-cancelled";
-      default: return "status-unknown";
+    // Payment method filter
+    if (paymentFilter !== "ALL") {
+      if (paymentFilter === "ONLINE") {
+        filtered = filtered.filter((item) => item.hasPaidOnline);
+      } else if (paymentFilter === "COD") {
+        filtered = filtered.filter((item) => !item.hasPaidOnline);
+      }
     }
-  };
+
+    setFilteredOrders(filtered);
+    setCurrentPage(0);
+  }, [searchTerm, statusFilter, paymentFilter, orders]);
 
   const formatCurrency = (amount) =>
-    amount ? amount.toLocaleString("vi-VN") + " ₫" : "0 ₫";
+    (Number(amount) || 0).toLocaleString("vi-VN") + " ₫";
+
+  const getStatusBadge = (status) => {
+    switch (status) {
+      case "PROCESSING":
+        return <span className="custom-badge badge-processing">👨‍🍳 Đang xử lý</span>;
+      case "PENDING":
+        return <span className="custom-badge badge-pending">⏳ Chờ duyệt</span>;
+      case "COMPLETED":
+        return <span className="custom-badge badge-completed">✅ Hoàn thành</span>;
+      case "CANCELLED":
+        return <span className="custom-badge badge-cancelled">❌ Đã hủy</span>;
+      default:
+        return <span className="custom-badge badge-default">{status || "Unknown"}</span>;
+    }
+  };
 
   const handleStatusChange = async (orderId, newStatus) => {
     if (!orderId || isNaN(Number(orderId))) {
@@ -106,23 +164,38 @@ export default function OrderManager() {
       });
     }
 
+    const statusNames = {
+      PENDING: "Chờ xác nhận",
+      PROCESSING: "Đang xử lý / Chế biến",
+      COMPLETED: "Đã hoàn thành",
+      CANCELLED: "Hủy đơn hàng"
+    };
+
     const result = await Swal.fire({
-      title: "Xác nhận thay đổi",
-      text: `Bạn có chắc chắn muốn đổi trạng thái thành "${newStatus}"?`,
+      title: "Cập nhật trạng thái đơn?",
+      html: `Đổi trạng thái đơn hàng <b>#${orderId}</b> sang <b style="color: #c9a66b;">${statusNames[newStatus] || newStatus}</b>?`,
       icon: "question",
       showCancelButton: true,
-      confirmButtonText: "Đồng ý",
+      confirmButtonText: "Xác nhận",
       cancelButtonText: "Hủy",
+      confirmButtonColor: "#28a745",
+      cancelButtonColor: "#6c757d",
     });
 
     if (result.isConfirmed) {
       try {
         await PutOrderStatus(Number(orderId), newStatus);
-        setRefresh(!refresh);
+        setRefresh((prev) => !prev);
+
+        // Cập nhật selectedOrder nếu modal đang mở
+        if (selectedOrder && selectedOrder.id === orderId) {
+          setSelectedOrder((prev) => ({ ...prev, status: newStatus }));
+        }
+
         Swal.fire({
           icon: "success",
           title: "Thành công",
-          text: "Đã cập nhật trạng thái đơn hàng",
+          text: `Đã đổi trạng thái sang "${statusNames[newStatus] || newStatus}"`,
           timer: 1500,
           showConfirmButton: false,
         });
@@ -137,6 +210,11 @@ export default function OrderManager() {
     }
   };
 
+  const handleOpenDetail = (order) => {
+    setSelectedOrder(order);
+    setShowDetailModal(true);
+  };
+
   const handlePageClick = ({ selected }) => setCurrentPage(selected);
 
   const offset = currentPage * itemsPerPage;
@@ -144,138 +222,343 @@ export default function OrderManager() {
   const pageCount = Math.ceil(filteredOrders.length / itemsPerPage);
 
   return (
-    <main className="order-manager-container">
-      <div className="container pt-4">
-        {/* Header */}
-        <div className="header d-flex align-items-center justify-content-between mb-4">
-          <div className="text-secondary">Tổng: {totalOrders} đơn hàng</div>
-          <h2 className="text-center font-weight-bold mb-0">QUẢN LÝ ĐƠN HÀNG</h2>
-          <div></div>
+    <main className="order-manager-pro-container">
+      <div className="container-fluid px-4 py-4">
+        {/* Top Header */}
+        <div className="admin-page-hero d-flex flex-wrap justify-content-between align-items-center mb-4">
+          <div>
+            <h2 className="admin-hero-title mb-1">
+              <FaShoppingBag className="me-2 text-warning" /> Quản Lý Đơn Hàng Pizza Deli
+            </h2>
+            <p className="admin-hero-subtitle text-muted mb-0">
+              Theo dõi, xác nhận và chế biến các đơn đặt hàng từ khách hàng theo thời gian thực
+            </p>
+          </div>
+          <div className="d-flex align-items-center gap-2 mt-3 mt-md-0">
+            <button
+              className="btn btn-outline-primary d-flex align-items-center gap-2 px-3 py-2 shadow-sm"
+              onClick={() => setRefresh((prev) => !prev)}
+              disabled={loading}
+            >
+              <FaSyncAlt className={loading ? "fa-spin" : ""} />
+              {loading ? "Đang tải..." : "Làm mới dữ liệu"}
+            </button>
+          </div>
         </div>
 
-        {/* Search + Filter */}
-        <div className="search-container mb-4">
-          <input
-            type="text"
-            className="search-input"
-            placeholder="Tìm kiếm theo tên người đặt..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-          <select
-            className="search-select"
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-          >
-            <option value="">Tất cả trạng thái</option>
-            <option value="PENDING">Chờ xác nhận</option>
-            <option value="PROCESSING">Đang xử lý</option>
-            <option value="COMPLETED">Hoàn thành</option>
-            <option value="CANCELLED">Đã hủy</option>
-          </select>
+        {/* KPI Stats Cards */}
+        <div className="row g-3 mb-4">
+          <div className="col-xl-2 col-md-4 col-sm-6">
+            <div className="kpi-card kpi-total shadow-sm">
+              <div className="kpi-icon bg-light text-dark">
+                <FaShoppingBag />
+              </div>
+              <div className="kpi-data">
+                <span className="kpi-label">Tổng Đơn Hàng</span>
+                <h4 className="kpi-value">{stats.total}</h4>
+              </div>
+            </div>
+          </div>
+
+          <div className="col-xl-2 col-md-4 col-sm-6">
+            <div className="kpi-card kpi-pending shadow-sm">
+              <div className="kpi-icon bg-warning-subtle text-warning">
+                <FaClock />
+              </div>
+              <div className="kpi-data">
+                <span className="kpi-label">Chờ Duyệt</span>
+                <h4 className="kpi-value text-warning">{stats.pending}</h4>
+              </div>
+            </div>
+          </div>
+
+          <div className="col-xl-2 col-md-4 col-sm-6">
+            <div className="kpi-card kpi-processing shadow-sm">
+              <div className="kpi-icon bg-primary-subtle text-primary">
+                <FaUtensils />
+              </div>
+              <div className="kpi-data">
+                <span className="kpi-label">Đang Nấu / Xử Lý</span>
+                <h4 className="kpi-value text-primary">{stats.processing}</h4>
+              </div>
+            </div>
+          </div>
+
+          <div className="col-xl-2 col-md-4 col-sm-6">
+            <div className="kpi-card kpi-completed shadow-sm">
+              <div className="kpi-icon bg-success-subtle text-success">
+                <FaCheckCircle />
+              </div>
+              <div className="kpi-data">
+                <span className="kpi-label">Hoàn Thành</span>
+                <h4 className="kpi-value text-success">{stats.completed}</h4>
+              </div>
+            </div>
+          </div>
+
+          <div className="col-xl-2 col-md-4 col-sm-6">
+            <div className="kpi-card kpi-cancelled shadow-sm">
+              <div className="kpi-icon bg-danger-subtle text-danger">
+                <FaTimesCircle />
+              </div>
+              <div className="kpi-data">
+                <span className="kpi-label">Đã Hủy</span>
+                <h4 className="kpi-value text-danger">{stats.cancelled}</h4>
+              </div>
+            </div>
+          </div>
+
+          <div className="col-xl-2 col-md-4 col-sm-6">
+            <div className="kpi-card kpi-revenue shadow-sm">
+              <div className="kpi-icon bg-gold-subtle text-gold">
+                <FaMoneyBillWave />
+              </div>
+              <div className="kpi-data">
+                <span className="kpi-label">Doanh Thu Giao Xong</span>
+                <h5 className="kpi-value text-success mb-0">{formatCurrency(stats.revenue)}</h5>
+              </div>
+            </div>
+          </div>
         </div>
 
-        {/* Table */}
-        <div className="table-responsive" style={{ minHeight: "600px" }}>
-          <table className="table table-hover">
-            <thead className="table-dark">
-              <tr>
-                <th>#</th>
-                <th>Tên người đặt</th>
-                <th>Ngày đặt</th>
-                <th>Tổng tiền</th>
-                <th>Trạng thái</th>
-                <th>Thanh toán</th>
-                <th>Thay đổi trạng thái</th>
-              </tr>
-            </thead>
-            <tbody>
-              {paginatedOrders.length > 0 ? (
-                paginatedOrders.map((item, index) => (
-                  <tr key={item.id || `order-${index}`}>
-                    <td>{offset + index + 1}</td>
-                    <td>{item.username || "Không có"}</td>
-                    <td>
-                      {item.createdAt
-                        ? new Date(item.createdAt).toLocaleDateString("vi-VN")
-                        : "N/A"}
-                    </td>
-                    <td>{formatCurrency(item.totalPrice)}</td>
-                    <td>
-                      <span className={`status-badge ${getStatusClass(item.status)}`}>
-                        {item.status || "Unknown"}
-                      </span>
-                    </td>
-                    <td>
-                      {item.paymentStatus === "Đã thanh toán" ? (
-                        <span className="status-badge status-completed">
-                          {item.paymentStatus}
+        {/* Filter Tabs & Search Bar */}
+        <div className="admin-card mb-4 shadow-sm">
+          <div className="status-tabs-container">
+            <button
+              className={`status-tab-btn ${statusFilter === "ALL" ? "active" : ""}`}
+              onClick={() => setStatusFilter("ALL")}
+            >
+              Tất cả <span className="tab-counter">{stats.total}</span>
+            </button>
+            <button
+              className={`status-tab-btn tab-pending ${statusFilter === "PENDING" ? "active" : ""}`}
+              onClick={() => setStatusFilter("PENDING")}
+            >
+              Chờ xác nhận <span className="tab-counter">{stats.pending}</span>
+            </button>
+            <button
+              className={`status-tab-btn tab-processing ${statusFilter === "PROCESSING" ? "active" : ""}`}
+              onClick={() => setStatusFilter("PROCESSING")}
+            >
+              Đang xử lý <span className="tab-counter">{stats.processing}</span>
+            </button>
+            <button
+              className={`status-tab-btn tab-completed ${statusFilter === "COMPLETED" ? "active" : ""}`}
+              onClick={() => setStatusFilter("COMPLETED")}
+            >
+              Hoàn thành <span className="tab-counter">{stats.completed}</span>
+            </button>
+            <button
+              className={`status-tab-btn tab-cancelled ${statusFilter === "CANCELLED" ? "active" : ""}`}
+              onClick={() => setStatusFilter("CANCELLED")}
+            >
+              Đã hủy <span className="tab-counter">{stats.cancelled}</span>
+            </button>
+          </div>
+
+          {/* Search Controls */}
+          <div className="p-3 border-top d-flex flex-wrap gap-3 align-items-center justify-content-between bg-light rounded-bottom">
+            <div className="search-box-wrapper flex-grow-1" style={{ maxWidth: "480px" }}>
+              <FaSearch className="search-icon text-muted" />
+              <input
+                type="text"
+                className="form-control ps-5 py-2 search-input-pro"
+                placeholder="Tìm theo Mã đơn (#20), Tên khách, SĐT, Địa chỉ..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+              {searchTerm && (
+                <button
+                  className="btn btn-sm btn-link text-muted clear-search-btn"
+                  onClick={() => setSearchTerm("")}
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+
+            <div className="d-flex align-items-center gap-2">
+              <span className="small text-muted fw-semibold">Thanh toán:</span>
+              <select
+                className="form-select form-select-sm py-2 filter-select-pro"
+                value={paymentFilter}
+                onChange={(e) => setPaymentFilter(e.target.value)}
+                style={{ width: "180px" }}
+              >
+                <option value="ALL">Tất cả hình thức</option>
+                <option value="ONLINE">Đã thanh toán online</option>
+                <option value="COD">Thanh toán COD</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {/* Data Table */}
+        <div className="admin-card shadow-sm overflow-hidden mb-4">
+          <div className="table-responsive">
+            <table className="table table-hover align-middle mb-0 pro-order-table">
+              <thead className="table-head-pro">
+                <tr>
+                  <th style={{ width: "80px" }}>Mã Đơn</th>
+                  <th>Khách Hàng & Liên Hệ</th>
+                  <th>Địa Chỉ Giao Hàng</th>
+                  <th style={{ width: "130px" }}>Ngày Đặt</th>
+                  <th style={{ width: "120px" }}>Tổng Tiền</th>
+                  <th style={{ width: "160px" }}>Thanh Toán</th>
+                  <th style={{ width: "150px" }}>Trạng Thái</th>
+                  <th style={{ width: "180px" }} className="text-center">Thao Tác</th>
+                </tr>
+              </thead>
+              <tbody>
+                {paginatedOrders.length > 0 ? (
+                  paginatedOrders.map((item) => (
+                    <tr
+                      key={item.id}
+                      className="order-row-pro"
+                      onClick={() => handleOpenDetail(item)}
+                      style={{ cursor: "pointer" }}
+                    >
+                      <td>
+                        <span className="order-id-badge">#{item.id}</span>
+                      </td>
+
+                      <td>
+                        <div className="fw-bold text-dark">{item.username || "Chưa có tên"}</div>
+                        {item.phone_number && (
+                          <div className="small text-muted d-flex align-items-center gap-1 mt-1">
+                            <FaPhoneAlt className="text-success" style={{ fontSize: "11px" }} />
+                            <span>{item.phone_number}</span>
+                          </div>
+                        )}
+                      </td>
+
+                      <td>
+                        <div className="address-cell text-truncate" style={{ maxWidth: "240px" }} title={item.address}>
+                          <FaMapMarkerAlt className="text-danger me-1" style={{ fontSize: "12px" }} />
+                          <span>{item.address || "N/A"}</span>
+                        </div>
+                      </td>
+
+                      <td>
+                        <span className="small text-muted">
+                          {item.createdAt
+                            ? new Date(item.createdAt).toLocaleDateString("vi-VN", {
+                                day: "2-digit",
+                                month: "2-digit",
+                                year: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit"
+                              })
+                            : "N/A"}
                         </span>
-                      ) : (
-                        <span className="status-badge status-pending">
-                          {item.paymentStatus}
+                      </td>
+
+                      <td>
+                        <span className="fw-bold text-dark">
+                          {formatCurrency(item.totalPrice)}
                         </span>
-                      )}
-                    </td>
-                    <td>
-                      {["COMPLETED", "CANCELLED"].includes(item.status) ? (
-                        <span className={`status-badge ${getStatusClass(item.status)}`}>
-                          {item.status}
-                        </span>
-                      ) : (
-                        <select
-                          value={item.status}
-                          onChange={(e) => handleStatusChange(item.id, e.target.value)}
-                          className="search-select"
-                        >
-                          <option value="PENDING">Chờ xác nhận</option>
-                          <option value="PROCESSING">Đang xử lý</option>
-                          <option value="COMPLETED">Hoàn thành</option>
-                          <option value="CANCELLED">Đã hủy</option>
-                        </select>
-                      )}
+                        {item.voucherCode && (
+                          <div>
+                            <span className="badge bg-success-subtle text-success border border-success" style={{ fontSize: "10px" }}>
+                              {item.voucherCode}
+                            </span>
+                          </div>
+                        )}
+                      </td>
+
+                      <td>
+                        {item.hasPaidOnline ? (
+                          <span className="payment-badge payment-online">
+                            💳 VNPay Online
+                          </span>
+                        ) : (
+                          <span className="payment-badge payment-cod">
+                            🚚 Tiền mặt (COD)
+                          </span>
+                        )}
+                      </td>
+
+                      <td>
+                        {getStatusBadge(item.status)}
+                      </td>
+
+                      <td className="text-center" onClick={(e) => e.stopPropagation()}>
+                        <div className="d-flex align-items-center justify-content-center gap-1">
+                          <button
+                            className="btn btn-sm btn-outline-primary d-flex align-items-center gap-1 px-2 py-1 shadow-sm"
+                            title="Xem chi tiết đơn hàng và Topping"
+                            onClick={() => handleOpenDetail(item)}
+                          >
+                            <FaEye /> Chi tiết
+                          </button>
+
+                          <select
+                            value={item.status}
+                            onChange={(e) => handleStatusChange(item.id, e.target.value)}
+                            className="form-select form-select-sm py-1 status-select-quick"
+                            style={{ width: "125px", fontSize: "12px" }}
+                          >
+                            <option value="PENDING">Chờ duyệt</option>
+                            <option value="PROCESSING">Đang nấu</option>
+                            <option value="COMPLETED">Hoàn thành</option>
+                            <option value="CANCELLED">Hủy đơn</option>
+                          </select>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={8} className="text-center py-5 text-muted">
+                      <div className="empty-orders-state py-4">
+                        <Icon style={{ fontSize: "48px", color: "#cbd5e1" }}>receipt_long</Icon>
+                        <h5 className="mt-2 text-secondary">Không tìm thấy đơn hàng nào</h5>
+                        <p className="small text-muted">Hãy thử thay đổi từ khóa tìm kiếm hoặc chuyển tab trạng thái khác.</p>
+                      </div>
                     </td>
                   </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={7} className="text-center py-4 text-muted">
-                    <div className="no-orders-content">
-                      <Icon className="no-orders-icon">shopping_cart</Icon>
-                      <p>Không có đơn hàng nào</p>
-                    </div>
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Pagination */}
-        {pageCount > 1 && (
-          <div className="pagination-container d-flex justify-content-center mt-4">
-            <ReactPaginate
-              previousLabel={<Icon>chevron_left</Icon>}
-              nextLabel={<Icon>chevron_right</Icon>}
-              breakLabel="..."
-              pageCount={pageCount}
-              marginPagesDisplayed={2}
-              pageRangeDisplayed={5}
-              onPageChange={handlePageClick}
-              containerClassName="pagination"
-              activeClassName="active"
-              pageClassName="page-item"
-              pageLinkClassName="page-link"
-              previousClassName="page-item"
-              previousLinkClassName="page-link"
-              nextClassName="page-item"
-              nextLinkClassName="page-link"
-              breakClassName="page-item"
-              breakLinkClassName="page-link"
-            />
+                )}
+              </tbody>
+            </table>
           </div>
-        )}
+
+          {/* Pagination */}
+          {pageCount > 1 && (
+            <div className="d-flex justify-content-between align-items-center p-3 border-top bg-light">
+              <span className="small text-muted">
+                Hiển thị <strong>{offset + 1}</strong> - <strong>{Math.min(offset + itemsPerPage, filteredOrders.length)}</strong> trên tổng số <strong>{filteredOrders.length}</strong> đơn
+              </span>
+              <ReactPaginate
+                previousLabel="‹ Trước"
+                nextLabel="Sau ›"
+                breakLabel="..."
+                pageCount={pageCount}
+                marginPagesDisplayed={2}
+                pageRangeDisplayed={3}
+                onPageChange={handlePageClick}
+                containerClassName="pagination pagination-sm mb-0 gap-1"
+                activeClassName="active"
+                pageClassName="page-item"
+                pageLinkClassName="page-link rounded"
+                previousClassName="page-item"
+                previousLinkClassName="page-link rounded"
+                nextClassName="page-item"
+                nextLinkClassName="page-link rounded"
+                breakClassName="page-item"
+                breakLinkClassName="page-link rounded"
+              />
+            </div>
+          )}
+        </div>
       </div>
+
+      {/* Admin Order Detail Modal */}
+      <AdminOrderDetailModal
+        show={showDetailModal}
+        onHide={() => setShowDetailModal(false)}
+        order={selectedOrder}
+        onStatusChange={handleStatusChange}
+      />
     </main>
   );
 }

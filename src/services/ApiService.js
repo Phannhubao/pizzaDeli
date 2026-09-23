@@ -159,7 +159,49 @@ async function PutProductStatus(userId, newPassword) {
   });
 }
 
+// COUPON =============================
+async function GetActiveCoupons() {
+  try {
+    const res = await axios.get(`${Domain}/api/coupons`);
+    return res.data;
+  } catch (err) {
+    console.warn("GetActiveCoupons API error, fallback to defaults", err);
+    return null;
+  }
+}
+
+async function ValidateCouponAPI(code, orderTotal) {
+  try {
+    const res = await axios.post(`${Domain}/api/coupons/validate`, {
+      code,
+      orderTotal
+    });
+    return res.data;
+  } catch (err) {
+    console.warn("ValidateCouponAPI error:", err);
+    return null;
+  }
+}
+
+async function GetAllCouponsAdmin() {
+  return (await axios.get(`${Domain}/api/coupons/all`)).data;
+}
+
+async function PostCreateCoupon(couponData) {
+  return (await axios.post(`${Domain}/api/coupons`, couponData)).data;
+}
+
+async function DeleteCouponAPI(id) {
+  return (await axios.delete(`${Domain}/api/coupons/${id}`)).data;
+}
+
 export {
+  // COUPON
+  GetActiveCoupons,
+  ValidateCouponAPI,
+  GetAllCouponsAdmin,
+  PostCreateCoupon,
+  DeleteCouponAPI,
   // USER
   GetUserByID,
   PutUser,

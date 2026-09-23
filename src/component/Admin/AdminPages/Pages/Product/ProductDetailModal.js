@@ -1,317 +1,278 @@
 import { useEffect, useState, useCallback } from "react";
-import { Modal, Button } from "react-bootstrap";
-import { Icon } from "@mui/material";
-import { GetProductByID, GetImageByProductId, GetCategoryList } from "../../../../../services/ApiService";
-import Swal from "sweetalert2";
+import { Modal } from "react-bootstrap";
+import { useNavigate } from "react-router-dom";
+import {
+  FaPizzaSlice,
+  FaEdit,
+  FaCheckCircle,
+  FaChevronLeft,
+  FaChevronRight
+} from "react-icons/fa";
+import {
+  GetProductByID,
+  GetImageByProductId,
+  GetCategoryList
+} from "../../../../../services/ApiService";
+import "../../AdminCrud.css";
 
 const ProductDetailModal = ({ show, onHide, productId }) => {
+  const navigate = useNavigate();
   const [product, setProduct] = useState(null);
   const [images, setImages] = useState([]);
   const [categories, setCategories] = useState([]);
-  const [loading, setLoading] = useState({
-    product: false,
-    images: false,
-    categories: false,
-  });
+  const [loading, setLoading] = useState(true);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
 
-  // Hàm lấy tên danh mục từ categoryId
-  const getCategoryName = (categoryId) => {
-    if (!categoryId) return "Không có danh mục";
-    const category = categories.find(
-      (cat) => cat.id === categoryId || cat._id === categoryId || cat.categoryId === categoryId
-    );
-    return category?.categoryName || category?.name || "Không xác định";
-  };
-
-  // Fetch chi tiết sản phẩm
-  const fetchProductDetails = useCallback(async () => {
-    setLoading((prev) => ({ ...prev, product: true }));
+  const fetchDetails = useCallback(async () => {
+    if (!productId) return;
+    setLoading(true);
     try {
-      const response = await GetProductByID(productId);
-      if (response.status === 200) {
-        setProduct(response.data);
-      } else {
-        throw new Error("Không thể tải chi tiết sản phẩm");
+      const [prodRes, imgRes, catRes] = await Promise.allSettled([
+        GetProductByID(productId),
+        GetImageByProductId(productId),
+        GetCategoryList()
+      ]);
+
+      if (prodRes.status === "fulfilled" && prodRes.value?.data) {
+        setProduct(prodRes.value.data);
       }
-    } catch (error) {
-      console.error("Lỗi khi lấy chi tiết sản phẩm:", error);
-      Swal.fire({
-        icon: "error",
-        title: "Lỗi",
-        text: error.response?.data?.message || error.message,
-      });
+
+      if (imgRes.status === "fulfilled" && imgRes.value) {
+        const raw = imgRes.value.data || imgRes.value || [];
+        const validImgs = Array.isArray(raw) ? raw : [];
+        setImages(validImgs);
+
+        // Find primary image index
+        const pIndex = validImgs.findIndex((img) => img.isPrimary);
+        setActiveImageIndex(pIndex >= 0 ? pIndex : 0);
+      }
+
+      if (catRes.status === "fulfilled" && catRes.value) {
+        const rawCats = catRes.value.data || catRes.value || [];
+        setCategories(Array.isArray(rawCats) ? rawCats : []);
+      }
+    } catch (err) {
+      console.error("Lỗi khi tải chi tiết sản phẩm:", err);
     } finally {
-      setLoading((prev) => ({ ...prev, product: false }));
+      setLoading(false);
     }
   }, [productId]);
-
-  // Fetch hình ảnh sản phẩm
-  const fetchProductImages = useCallback(async () => {
-    setLoading((prev) => ({ ...prev, images: true }));
-    try {
-      const response = await GetImageByProductId(productId);
-      console.log("Images data from API (raw):", response.data); // Debug dữ liệu thô
-      const imagesData = Array.isArray(response.data) ? response.data : [];
-      console.log("Processed images data:", imagesData); // Debug dữ liệu đã xử lý
-
-      // Xử lý dữ liệu ảnh, ưu tiên ảnh isPrimary mới nhất
-      const validImages = imagesData.map((img) => ({
-        imageId: img.imageId || img.id || Date.now(),
-        imageUrl: img.imageUrl || "img/default-product.png",
-        caption: img.caption || null,
-        isPrimary: img.isPrimary || false,
-        createdAt: img.createdAt || new Date().toISOString(),
-        productId: img.productId || productId,
-      }));
-
-      setImages(validImages);
-
-      // Tìm ảnh isPrimary mới nhất dựa trên createdAt
-      const primaryImages = validImages.filter((img) => img.isPrimary);
-      if (primaryImages.length > 0) {
-        const latestPrimary = primaryImages.reduce((latest, current) =>
-          new Date(latest.createdAt) > new Date(current.createdAt) ? latest : current
-        );
-        setActiveImageIndex(validImages.findIndex((img) => img.imageId === latestPrimary.imageId));
-      }
-    } catch (error) {
-      console.error("Lỗi khi lấy hình ảnh sản phẩm:", error);
-      Swal.fire({
-        icon: "warning",
-        title: "Cảnh báo",
-        text: "Không thể tải hình ảnh sản phẩm",
-        timer: 1500,
-        showConfirmButton: false,
-      });
-    } finally {
-      setLoading((prev) => ({ ...prev, images: false }));
-    }
-  }, [productId]);
-
-  // Fetch danh sách danh mục
-  const fetchCategories = useCallback(async () => {
-    setLoading((prev) => ({ ...prev, categories: true }));
-    try {
-      const response = await GetCategoryList();
-      const categoriesData = Array.isArray(response)
-        ? response
-        : Array.isArray(response?.data)
-        ? response.data
-        : [];
-      setCategories(categoriesData);
-    } catch (error) {
-      console.error("Lỗi khi lấy danh sách danh mục:", error);
-      Swal.fire({
-        icon: "warning",
-        title: "Cảnh báo",
-        text: "Không thể tải danh sách danh mục",
-        timer: 1500,
-        showConfirmButton: false,
-      });
-    } finally {
-      setLoading((prev) => ({ ...prev, categories: false }));
-    }
-  }, []);
 
   useEffect(() => {
     if (show && productId) {
-      fetchProductDetails();
-      fetchProductImages();
-      fetchCategories();
+      fetchDetails();
     } else {
-      // Reset state khi đóng modal
       setProduct(null);
       setImages([]);
       setActiveImageIndex(0);
     }
-  }, [show, productId, fetchProductDetails, fetchProductImages, fetchCategories]);
+  }, [show, productId, fetchDetails]);
 
-  // Xử lý chuyển ảnh
-  const handleThumbnailClick = (index) => setActiveImageIndex(index);
-  const handlePrevImage = () =>
-    setActiveImageIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
-  const handleNextImage = () =>
+  const getCategoryName = (categoryId) => {
+    if (!categoryId) return "Không có";
+    const found = categories.find(
+      (c) =>
+        c.categoryId === categoryId ||
+        c.id === categoryId ||
+        c._id === categoryId
+    );
+    return found ? found.categoryName : "Chung";
+  };
+
+  const handleNextImage = () => {
     setActiveImageIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
+  };
+
+  const handlePrevImage = () => {
+    setActiveImageIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
+  };
+
+  const handleGoToEdit = () => {
+    onHide();
+    navigate(`/admin/products/update/${productId}`);
+  };
+
+  const activeImg =
+    images[activeImageIndex]?.imageUrl || "/img/default-product.png";
 
   return (
     <Modal show={show} onHide={onHide} size="lg" centered>
-      <Modal.Header closeButton className="border-0 pb-0">
-        <Modal.Title className="fw-bold">
-          {loading.product ? "Đang tải..." : `Chi tiết sản phẩm #${productId}`}
-        </Modal.Title>
-      </Modal.Header>
+      <div className="modal-header-pro">
+        <div className="d-flex align-items-center justify-content-between w-100">
+          <div className="modal-title">
+            <FaPizzaSlice className="text-warning me-2" />
+            <span>Chi Tiết Món Ăn #{productId}</span>
+          </div>
+          <button
+            type="button"
+            className="btn-close"
+            onClick={onHide}
+            aria-label="Close"
+          ></button>
+        </div>
+      </div>
 
-      <Modal.Body className="pt-0">
-        {loading.product ? (
+      <div className="modal-body-pro">
+        {loading ? (
           <div className="text-center py-5">
-            <div className="spinner-border text-primary" role="status">
-              <span className="visually-hidden">Loading...</span>
-            </div>
-            <p className="mt-2">Đang tải thông tin sản phẩm...</p>
+            <div className="spinner-border text-primary" role="status"></div>
+            <p className="mt-2 text-muted small">Đang tải thông tin món ăn...</p>
           </div>
         ) : product ? (
           <div className="row g-4">
-            {/* Cột hình ảnh */}
+            {/* Left: Image Gallery */}
             <div className="col-md-6">
-              <div className="sticky-top" style={{ top: "20px" }}>
-                {loading.images ? (
-                  <div className="text-center py-4">
-                    <div className="spinner-border text-secondary" role="status">
-                      <span className="visually-hidden">Loading images...</span>
-                    </div>
-                  </div>
-                ) : images.length > 0 ? (
-                  <div className="product-image-gallery">
-                    <div className="main-image-container position-relative mb-3">
-                      <img
-                        src={images[activeImageIndex]?.imageUrl || "img/default-product.png"}
-                        alt={`${product.productName} ${activeImageIndex + 1}`}
-                        className="img-fluid rounded-3 border"
-                        style={{ maxHeight: "400px", width: "100%", objectFit: "contain" }}
-                        onError={(e) => {
-                          e.target.src = "img/default-product.png";
-                          console.error("Image failed to load:", images[activeImageIndex]?.imageUrl);
-                        }}
-                      />
-                      {images.length > 1 && (
-                        <>
-                          <Button
-                            variant="light"
-                            className="position-absolute top-50 start-0 translate-middle-y rounded-circle p-2 shadow-sm"
-                            onClick={handlePrevImage}
-                          >
-                            <Icon>chevron_left</Icon>
-                          </Button>
-                          <Button
-                            variant="light"
-                            className="position-absolute top-50 end-0 translate-middle-y rounded-circle p-2 shadow-sm"
-                            onClick={handleNextImage}
-                          >
-                            <Icon>chevron_right</Icon>
-                          </Button>
-                        </>
-                      )}
-                    </div>
-                    {images.length > 1 && (
-                      <div className="thumbnails-container d-flex gap-2 overflow-auto py-2">
-                        {images.map((image, index) => (
-                          <div
-                            key={image.imageId}
-                            onClick={() => handleThumbnailClick(index)}
-                            className={`thumbnail-item ${index === activeImageIndex ? "active" : ""}`}
-                            style={{
-                              cursor: "pointer",
-                              border: index === activeImageIndex ? "2px solid #0d6efd" : "1px solid #dee2e6",
-                            }}
-                          >
-                            <img
-                              src={image.imageUrl || "img/default-product.png"}
-                              alt={`Thumbnail ${index + 1}`}
-                              style={{ width: "80px", height: "80px", objectFit: "cover" }}
-                              onError={(e) => {
-                                e.target.src = "img/default-product.png";
-                                console.error("Thumbnail failed to load:", image.imageUrl);
-                              }}
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="text-center py-5 bg-light rounded-3">
-                    <Icon fontSize="large" className="text-muted">image</Icon>
-                    <p className="mt-2 text-muted">Sản phẩm chưa có hình ảnh</p>
-                  </div>
+              <div className="position-relative bg-light rounded-3 overflow-hidden border">
+                <img
+                  src={activeImg}
+                  alt={product.productName}
+                  className="w-100"
+                  style={{ height: "300px", objectFit: "cover" }}
+                  onError={(e) => {
+                    e.target.src = "/img/default-product.png";
+                  }}
+                />
+
+                {images.length > 1 && (
+                  <>
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-light position-absolute top-50 start-0 translate-middle-y ms-2 shadow-sm rounded-circle p-2"
+                      onClick={handlePrevImage}
+                    >
+                      <FaChevronLeft />
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-light position-absolute top-50 end-0 translate-middle-y me-2 shadow-sm rounded-circle p-2"
+                      onClick={handleNextImage}
+                    >
+                      <FaChevronRight />
+                    </button>
+                  </>
+                )}
+
+                {images[activeImageIndex]?.isPrimary && (
+                  <span className="image-primary-ribbon">
+                    <FaCheckCircle /> Ảnh đại diện
+                  </span>
                 )}
               </div>
+
+              {/* Thumbnails */}
+              {images.length > 1 && (
+                <div className="d-flex gap-2 mt-2 overflow-auto pb-1">
+                  {images.map((img, idx) => (
+                    <img
+                      key={img.imageId || idx}
+                      src={img.imageUrl || "/img/default-product.png"}
+                      alt="Thumbnail"
+                      className="rounded border"
+                      style={{
+                        width: "60px",
+                        height: "60px",
+                        objectFit: "cover",
+                        cursor: "pointer",
+                        borderColor:
+                          idx === activeImageIndex
+                            ? "#3b82f6 !important"
+                            : "#e2e8f0",
+                        borderWidth: idx === activeImageIndex ? "2px" : "1px",
+                        opacity: idx === activeImageIndex ? 1 : 0.6
+                      }}
+                      onClick={() => setActiveImageIndex(idx)}
+                      onError={(e) => {
+                        e.target.src = "/img/default-product.png";
+                      }}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
 
-            {/* Cột thông tin */}
+            {/* Right: Info */}
             <div className="col-md-6">
-              <div className="product-details">
-                <h2 className="mb-3 fw-bold">{product.productName}</h2>
+              <div className="d-flex align-items-center gap-2 mb-2">
+                <span className="badge bg-primary-subtle text-primary border px-2 py-1">
+                  {getCategoryName(
+                    product.categoryId || product.category?.categoryId
+                  )}
+                </span>
+                <span
+                  className={`badge px-2 py-1 ${
+                    product.active
+                      ? "bg-success-subtle text-success border border-success-subtle"
+                      : "bg-secondary-subtle text-secondary border"
+                  }`}
+                >
+                  {product.active ? "Đang mở bán" : "Tạm ngưng"}
+                </span>
+              </div>
 
-                {/* Giá */}
-                <div className="price-section mb-4">
-                  <h3 className="text-danger fw-bold mb-1">
-                    {product.price?.toLocaleString("vi-VN")}₫
-                  </h3>
-                  {product.discount > 0 && (
-                    <div className="d-flex align-items-center">
-                      <span className="text-muted text-decoration-line-through me-2">
-                        {(product.price * (1 + product.discount / 100))?.toLocaleString("vi-VN")}₫
-                      </span>
-                      <span className="badge bg-danger fs-6">-{product.discount}%</span>
+              <h3 className="fw-bold text-dark mb-2">{product.productName}</h3>
+
+              <div className="d-flex align-items-baseline gap-2 mb-3">
+                <span className="fs-3 fw-bold text-danger">
+                  {(Number(product.price) || 0).toLocaleString("vi-VN")} ₫
+                </span>
+              </div>
+
+              <div className="p-3 bg-light rounded-3 mb-3 border">
+                <div className="row g-2 small">
+                  <div className="col-6">
+                    <span className="text-muted d-block">Tồn kho:</span>
+                    <strong className="text-dark">
+                      {product.stock}{" "}
+                      {Number(product.stock) <= 0 ? (
+                        <span className="text-danger">(Hết hàng)</span>
+                      ) : (
+                        "phần"
+                      )}
+                    </strong>
+                  </div>
+                  <div className="col-6">
+                    <span className="text-muted d-block">Mã sản phẩm:</span>
+                    <strong className="text-dark">#{product.productId}</strong>
+                  </div>
+                  {product.createdAt && (
+                    <div className="col-12 mt-2">
+                      <span className="text-muted d-block">Ngày tạo:</span>
+                      <strong className="text-dark">
+                        {new Date(product.createdAt).toLocaleString("vi-VN")}
+                      </strong>
                     </div>
                   )}
                 </div>
+              </div>
 
-                {/* Thông tin cơ bản */}
-                <div className="basic-info mb-4">
-                  <div className="d-flex align-items-center mb-2">
-                    <Icon className="me-2 text-muted">category</Icon>
-                    <span>
-                      <strong>Danh mục:</strong> {getCategoryName(product.categoryId)}
-                    </span>
-                  </div>
-                  <div className="d-flex align-items-center mb-2">
-                    <Icon className="me-2 text-muted">inventory</Icon>
-                    <span>
-                      <strong>Tồn kho:</strong> {product.stock}
-                    </span>
-                  </div>
-                  <div className="d-flex align-items-center mb-2">
-                    <Icon className="me-2 text-muted">event</Icon>
-                    <span>
-                      <strong>Ngày tạo:</strong>{" "}
-                      {new Date(product.createdAt).toLocaleDateString("vi-VN")}
-                    </span>
-                  </div>
-                  <div className="d-flex align-items-center">
-                    <Icon className="me-2 text-muted">visibility</Icon>
-                    <span>
-                      <strong>Trạng thái:</strong>{" "}
-                      <span className={`badge ${product.active ? "bg-success" : "bg-secondary"}`}>
-                        {product.active ? "Đang bán" : "Ngừng kinh doanh"}
-                      </span>
-                    </span>
-                  </div>
-                </div>
-
-                {/* Mô tả */}
-                <div className="description-section mb-4">
-                  <h5 className="fw-bold mb-3 d-flex align-items-center">
-                    <Icon className="me-2">description</Icon>
-                    Mô tả sản phẩm
-                  </h5>
-                  <div className="bg-light p-3 rounded-2">
-                    {product.description ? (
-                      <p className="mb-0" style={{ whiteSpace: "pre-line" }}>
-                        {product.description}
-                      </p>
-                    ) : (
-                      <p className="text-muted mb-0">Chưa có mô tả</p>
-                    )}
-                  </div>
-                </div>
+              <div>
+                <label className="small fw-bold text-muted mb-1">Mô tả món ăn:</label>
+                <p className="small text-secondary mb-0" style={{ lineHeight: 1.6 }}>
+                  {product.description || "Không có mô tả cho món ăn này."}
+                </p>
               </div>
             </div>
           </div>
         ) : (
-          <div className="text-center py-5">
-            <Icon fontSize="large" className="text-muted">error</Icon>
-            <p className="mt-2 text-muted">Không tìm thấy thông tin sản phẩm</p>
+          <div className="text-center py-5 text-muted">
+            Không tìm thấy thông tin sản phẩm
           </div>
         )}
-      </Modal.Body>
+      </div>
 
-      <Modal.Footer className="border-0">
-        <Button variant="secondary" onClick={onHide}>
-          <Icon className="me-1">close</Icon> Đóng
-        </Button>
-      </Modal.Footer>
+      <div className="modal-footer-pro">
+        <button type="button" className="crud-btn-secondary" onClick={onHide}>
+          Đóng
+        </button>
+        <button
+          type="button"
+          className="crud-btn-primary"
+          onClick={handleGoToEdit}
+        >
+          <FaEdit />
+          <span>Chỉnh sửa món này</span>
+        </button>
+      </div>
     </Modal>
   );
 };

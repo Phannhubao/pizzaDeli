@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { FaArrowLeft, FaShoppingCart, FaUser, FaMapMarkerAlt, FaCreditCard, FaSpinner } from "react-icons/fa";
+import { FaArrowLeft, FaShoppingCart, FaUser, FaMapMarkerAlt, FaCreditCard, FaSpinner, FaTag } from "react-icons/fa";
 import axios from "axios";
 import CryptoJS from "crypto-js";
-import '../../css/checkout.css'
+import '../../css/checkout.css';
 import Swal from "sweetalert2"; 
+import { useCart } from "../../context/CartContext";
+import { Domain } from "../../services/Domain";
+
 // Hàm format datetime theo chuẩn VNPay (yyyyMMddHHmmss, GMT+7)
 const formatDateVN = (date) => {
   const tzOffset = 7 * 60 * 60000; // GMT+7
@@ -27,9 +30,19 @@ const getBaseUrl = () => {
 
 const CheckoutPage = () => {
   const navigate = useNavigate();
-  const [cartItems, setCartItems] = useState([]);
+  const {
+    cartItems,
+    totalItems,
+    totalPrice,
+    appliedCoupon,
+    discountAmount,
+    finalPrice,
+    clearCart
+  } = useCart();
+
   const [loading, setLoading] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState(false);
+  const [completedOrder, setCompletedOrder] = useState(null);
 
   const [customerInfo, setCustomerInfo] = useState({
     fullName: "",
@@ -41,9 +54,9 @@ const CheckoutPage = () => {
   });
 
   const [paymentMethod, setPaymentMethod] = useState("COD");
-  const Domain = process.env.REACT_APP_API_URL || "https://deli-api.onrender.com";
 
-  // Thông tin VNPay - returnUrl động trả về component VNPayReturn
+
+  // Thông tin VNPay
   const vnpayConfig = {
     tmnCode: "2EYSS84X", 
     secretKey: "AT2JO218AOV4EHRYFUC7GW9FF755NBEL", 
@@ -53,42 +66,24 @@ const CheckoutPage = () => {
 
   useEffect(() => {
     const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
-    if (currentUser.fullName) {
+    if (currentUser.fullName || currentUser.username) {
       setCustomerInfo(prev => ({
         ...prev,
-        fullName: currentUser.fullName,
+        fullName: currentUser.fullName || currentUser.username,
         email: currentUser.email || ""
       }));
     }
-    const savedCart = localStorage.getItem("pizza4ps_cart");
-    if (savedCart) {
-      try {
-        const parsedCart = JSON.parse(savedCart);
-        if (Array.isArray(parsedCart) && parsedCart.length > 0) {
-          const cartWithQuantity = parsedCart.map(item => ({
-            ...item,
-            quantity: item.quantity || 1
-          }));
-          setCartItems(cartWithQuantity);
-        } else {
-          navigate("/cart");
-        }
-      } catch (error) {
-        console.error("Error parsing cart:", error);
-        navigate("/cart");
-      }
-    } else {
+
+    // Chỉ chuyển về giỏ hàng khi chưa hoàn thành đặt hàng và giỏ hàng trống
+    if (!orderSuccess && (!cartItems || cartItems.length === 0)) {
       navigate("/cart");
     }
-  }, [navigate]);
+  }, [navigate, cartItems, orderSuccess]);
 
   const formatPrice = price =>
     new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" })
-      .format(price)
+      .format(price || 0)
       .replace("₫", " đ");
-
-  const totalItems = cartItems.reduce((total, item) => total + (item.quantity || 0), 0);
-  const totalPrice = cartItems.reduce((total, item) => total + ((item.price || 0) * (item.quantity || 0)), 0);
 
   const handleInputChange = e => {
     const { name, value } = e.target;
@@ -97,15 +92,15 @@ const CheckoutPage = () => {
 
   const validateForm = () => {
     if (!customerInfo.fullName.trim()) {
-      alert("Vui lòng nhập họ tên");
+      Swal.fire("Lỗi", "Vui lòng nhập họ tên", "error");
       return false;
     }
     if (!customerInfo.phone.trim()) {
-      alert("Vui lòng nhập số điện thoại");
+      Swal.fire("Lỗi", "Vui lòng nhập số điện thoại", "error");
       return false;
     }
     if (!customerInfo.address.trim()) {
-      alert("Vui lòng nhập địa chỉ giao hàng");
+      Swal.fire("Lỗi", "Vui lòng nhập địa chỉ giao hàng", "error");
       return false;
     }
     return true;
@@ -132,13 +127,15 @@ const CheckoutPage = () => {
     const totalQuantity = cartItems.reduce((total, item) => total + (item.quantity || 0), 0);
 
     try {
-      // 1. Tạo đơn hàng
+      // 1. Tạo đơn hàng với mã giảm giá và tùy chọn
       const orderData = {
         phone_number: customerInfo.phone,
         address: customerInfo.address,
         username: currentUser.username || customerInfo.fullName,
         quantity: totalQuantity,
-        totalPrice: totalPrice,
+        totalPrice: finalPrice, // Số tiền sau khi đã trừ giảm giá
+        voucherCode: appliedCoupon?.code || null,
+        discountAmount: discountAmount || 0,
         image: cartItems[0]?.image || "img/default-product.png",
         userId: userId,
         createdAt: currentTime
@@ -167,14 +164,16 @@ const CheckoutPage = () => {
       }
       orderId = Number(orderId);
 
-      // 3. Tạo OrderDetail
+      // 3. Tạo OrderDetail kèm options và note
       const orderDetailList = cartItems.map(item => ({
         quantity: item.quantity || 1,
         price: item.price || 0,
-        produc_name: item.productName || "Unknown Product",
+        produc_name: item.productName || item.name || "Unknown Product",
+        options: item.optionTags && item.optionTags.length > 0 ? item.optionTags.join(' | ') : null,
+        note: item.options?.note || null,
         image: item.image?.startsWith("../") ? item.image.substring(2) : item.image || "img/default-product.png",
         orderId: orderId,
-        productId: item.productId,
+        productId: item.productId || item.id,
         canFeedBack: false
       }));
 
@@ -200,60 +199,94 @@ const CheckoutPage = () => {
   };
 
   const handleCheckout = async () => {
-
     const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
     if (!currentUser || !currentUser.token) {
-    Swal.fire({
-      icon: "warning",
-      title: "Bạn chưa đăng nhập!",
-      text: "Vui lòng đăng nhập để tiếp tục đặt hàng.",
-      confirmButtonText: "Đăng nhập ngay",
-      confirmButtonColor: "#3085d6",
-      showCancelButton: true,
-      cancelButtonText: "Hủy",
-      cancelButtonColor: "#d33",
-    }).then((result) => {
-      if (result.isConfirmed) {
-        navigate("/login");
-      }
-    });
-    return;
-  }
+      Swal.fire({
+        icon: "warning",
+        title: "Bạn chưa đăng nhập!",
+        text: "Vui lòng đăng nhập để tiếp tục đặt hàng.",
+        confirmButtonText: "Đăng nhập ngay",
+        confirmButtonColor: "#c9a66b",
+        showCancelButton: true,
+        cancelButtonText: "Hủy",
+        cancelButtonColor: "#d33",
+      }).then((result) => {
+        if (result.isConfirmed) {
+          navigate("/login");
+        }
+      });
+      return;
+    }
+
     if (!validateForm()) return;
     setLoading(true);
 
     try {
       if (paymentMethod === "COD") {
         // Thanh toán COD: tạo đơn hàng ngay
-        await createOrderForCOD();
+        const createdOrderId = await createOrderForCOD();
         
-        // Xóa giỏ hàng và hiển thị thông báo thành công
-        localStorage.removeItem("pizza4ps_cart");
-        setCartItems([]);
+        // Lưu lại bản tóm tắt đơn hàng trước khi clear cart
+        const summary = {
+          orderId: createdOrderId,
+          fullName: customerInfo.fullName,
+          phone: customerInfo.phone,
+          address: customerInfo.address,
+          finalPrice: finalPrice,
+          discountAmount: discountAmount,
+          voucherCode: appliedCoupon?.code || null
+        };
+        setCompletedOrder(summary);
         setOrderSuccess(true);
+        clearCart();
+        window.scrollTo(0, 0);
+
+        // Hiển thị thông báo đặt hàng thành công
+        Swal.fire({
+          icon: "success",
+          title: "Đặt Hàng Thành Công!",
+          html: `
+            <div style="font-size: 15px; text-align: left; margin-top: 10px; line-height: 1.6;">
+              <p style="margin-bottom: 6px;"><b>Mã đơn hàng:</b> <span style="color: #c9a66b; font-weight: bold;">#${createdOrderId}</span></p>
+              <p style="margin-bottom: 6px;"><b>Người nhận:</b> ${customerInfo.fullName}</p>
+              <p style="margin-bottom: 6px;"><b>Số điện thoại:</b> ${customerInfo.phone}</p>
+              <p style="margin-bottom: 6px;"><b>Địa chỉ:</b> ${customerInfo.address}</p>
+              <p style="margin-bottom: 6px;"><b>Tổng thanh toán:</b> <span style="color: #e53935; font-weight: bold;">${formatPrice(finalPrice)}</span></p>
+              <p style="margin-bottom: 0;"><b>Hình thức:</b> Thanh toán khi nhận hàng (COD)</p>
+            </div>
+          `,
+          confirmButtonText: "Xem Đơn Hàng Của Bạn",
+          confirmButtonColor: "#28a745",
+          showCancelButton: true,
+          cancelButtonText: "Tiếp Tục Mua Sắm",
+          cancelButtonColor: "#c9a66b",
+          allowOutsideClick: false
+        }).then((result) => {
+          if (result.isConfirmed) {
+            navigate("/profile");
+          }
+        });
         
       } else if (paymentMethod === "BANK_TRANSFER") {
-        // Thanh toán VNPay: KHÔNG tạo đơn hàng ở đây, chỉ chuyển hướng đến VNPay
-        // Tạo transaction ID duy nhất
+        // Thanh toán VNPay
         const transactionId = `VNPAY_${Date.now()}`;
         
         const vnpParams = {
           vnp_Version: '2.1.0',
           vnp_Command: 'pay',
           vnp_TmnCode: vnpayConfig.tmnCode,
-          vnp_Amount: totalPrice * 100,
+          vnp_Amount: Math.round(finalPrice * 100), // Số tiền sau giảm giá
           vnp_CurrCode: 'VND',
-          vnp_TxnRef: transactionId, // Dùng transaction ID duy nhất
+          vnp_TxnRef: transactionId,
           vnp_OrderInfo: `Thanh toan don hang ${transactionId}`,
           vnp_OrderType: 'billpayment',
           vnp_Locale: 'vn',
           vnp_ReturnUrl: vnpayConfig.returnUrl,
           vnp_IpAddr: '127.0.0.1',
           vnp_CreateDate: formatDateVN(new Date()),
-          vnp_ExpireDate: formatDateVN(new Date(Date.now() + 15 * 60 * 1000)) // 15 phút
+          vnp_ExpireDate: formatDateVN(new Date(Date.now() + 15 * 60 * 1000))
         };
 
-        // Tạo secure hash
         const secureHash = createVnpayChecksum(vnpParams, vnpayConfig.secretKey);
         
         const vnpUrl = new URL(vnpayConfig.vnpayUrl);
@@ -262,13 +295,14 @@ const CheckoutPage = () => {
         });
         vnpUrl.searchParams.append('vnp_SecureHash', secureHash);
 
-        console.log("Redirecting to VNPay:", vnpUrl.toString());
-        
-        // Lưu thông tin đơn hàng tạm thời để sử dụng khi trả về
+        // Lưu thông tin đơn hàng tạm thời kèm voucher để sử dụng khi trả về
         const pendingOrder = {
           customerInfo,
           cartItems,
-          totalPrice,
+          totalPrice: finalPrice,
+          originalPrice: totalPrice,
+          discountAmount,
+          voucherCode: appliedCoupon?.code || null,
           totalItems,
           paymentMethod,
           transactionId: transactionId,
@@ -276,28 +310,62 @@ const CheckoutPage = () => {
         };
         localStorage.setItem("pending_vnpay_order", JSON.stringify(pendingOrder));
         
-        // 🚀 Chuyển hướng sang cổng thanh toán VNPay
+        // Chuyển hướng sang cổng thanh toán VNPay
         window.location.href = vnpUrl.toString();
       }
     } catch (err) {
       console.error("Checkout error:", err.response?.data || err.message);
-      alert(`Có lỗi xảy ra khi đặt hàng: ${err.response?.data?.message || err.message}. Vui lòng thử lại!`);
+      Swal.fire("Lỗi", `Có lỗi xảy ra: ${err.response?.data?.message || err.message}. Vui lòng thử lại!`, "error");
     } finally {
       setLoading(false);
     }
   };
 
   if (orderSuccess) {
+    const displayOrder = completedOrder || {
+      orderId: "",
+      fullName: customerInfo.fullName,
+      phone: customerInfo.phone,
+      address: customerInfo.address,
+      finalPrice: finalPrice,
+      discountAmount: discountAmount,
+      voucherCode: appliedCoupon?.code
+    };
+
     return (
       <div className="checkout-page">
         <div className="checkout-container">
-          <div className="success-message">
-            <div className="success-icon">✅</div>
+          <div className="order-success">
+            <div className="success-icon">✓</div>
             <h2>Đặt Hàng Thành Công!</h2>
-            <p>Cảm ơn bạn đã đặt hàng. Chúng tôi sẽ liên hệ với bạn sớm nhất!</p>
-            <button className="continue-shopping-btn" onClick={() => navigate("/")}>
-              Tiếp tục mua sắm
-            </button>
+            <p>Cảm ơn bạn đã đặt món tại Pizza Deli. Đơn hàng của bạn đang được bếp chế biến.</p>
+            {displayOrder.voucherCode && (
+              <div className="alert alert-success d-inline-block mt-2">
+                <FaTag /> Bạn đã tiết kiệm <strong>{formatPrice(displayOrder.discountAmount)}</strong> với mã <strong>{displayOrder.voucherCode}</strong>!
+              </div>
+            )}
+            <div className="order-info">
+              {displayOrder.orderId && (
+                <p><strong>Mã đơn hàng:</strong> <span style={{ color: "#c9a66b", fontWeight: "bold" }}>#{displayOrder.orderId}</span></p>
+              )}
+              <p><strong>Người nhận:</strong> {displayOrder.fullName}</p>
+              <p><strong>Số điện thoại:</strong> {displayOrder.phone}</p>
+              <p><strong>Địa chỉ:</strong> {displayOrder.address}</p>
+              <p><strong>Phương thức:</strong> Thanh toán khi nhận hàng (COD)</p>
+              <p><strong>Tổng thanh toán:</strong> <span className="text-danger fw-bold">{formatPrice(displayOrder.finalPrice)}</span></p>
+            </div>
+            <div style={{ display: "flex", gap: "12px", justifyContent: "center", marginTop: "20px" }}>
+              <button className="continue-shopping" onClick={() => navigate("/")}>
+                Tiếp Tục Mua Sắm
+              </button>
+              <button 
+                className="continue-shopping" 
+                style={{ backgroundColor: "#28a745", borderColor: "#28a745" }}
+                onClick={() => navigate("/profile")}
+              >
+                Xem Đơn Hàng Của Bạn
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -311,7 +379,7 @@ const CheckoutPage = () => {
           <button className="back-button" onClick={() => navigate("/cart")}>
             <FaArrowLeft /> Quay lại giỏ hàng
           </button>
-          <h1 className="checkout-title"><FaShoppingCart /> Thanh Toán</h1>
+          <h1 className="checkout-title"><FaShoppingCart /> Thanh Toán Đơn Hàng</h1>
         </div>
 
         <div className="checkout-content">
@@ -349,7 +417,7 @@ const CheckoutPage = () => {
             <div className="form-group">
               <label>Ghi chú</label>
               <textarea name="note" value={customerInfo.note}
-                onChange={handleInputChange} placeholder="Ghi chú thêm (không bắt buộc)"
+                onChange={handleInputChange} placeholder="Ghi chú thêm cho shipper (không bắt buộc)"
                 rows="2" />
             </div>
           </div>
@@ -366,40 +434,59 @@ const CheckoutPage = () => {
               <label className="payment-option">
                 <input type="radio" name="paymentMethod" value="BANK_TRANSFER"
                   checked={paymentMethod === "BANK_TRANSFER"} onChange={(e) => setPaymentMethod(e.target.value)} />
-                <span>Thanh toán qua VNPay</span>
+                <span>Thanh toán online qua VNPay (Sandbox)</span>
               </label>
             </div>
           </div>
 
           {/* Tóm tắt đơn hàng */}
           <div className="checkout-section">
-            <h3 className="section-title">Tóm Tắt Đơn Hàng</h3>
+            <h3 className="section-title">Tóm Tắt Đơn Hàng ({totalItems} món)</h3>
             <div className="order-items">
-              {cartItems.map((item) => (
-                <div key={item.productId} className="order-item">
-                  <div className="item-info">
-                    <img src={item.image?.startsWith("../") ? item.image.substring(2) : item.image || "img/default-product.png"}
-                      alt={item.productName} className="item-thumb" />
-                    <div>
-                      <h4>{item.productName}</h4>
-                      <span className="item-quantity">x{item.quantity || 1}</span>
+              {cartItems.map((item, idx) => {
+                const itemId = item.cartItemId || item.productId || idx;
+                return (
+                  <div key={itemId} className="order-item">
+                    <div className="item-info">
+                      <img src={item.image?.startsWith("../") ? item.image.substring(2) : item.image || "img/default-product.png"}
+                        alt={item.productName || item.name} className="item-thumb" />
+                      <div>
+                        <h4>{item.productName || item.name}</h4>
+                        {item.optionTags && item.optionTags.length > 0 && (
+                          <div className="checkout-options-tags my-1">
+                            {item.optionTags.map((opt, i) => (
+                              <span key={i} className="badge bg-light text-dark border me-1 small">
+                                {opt}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                        <span className="item-quantity">Số lượng: x{item.quantity || 1}</span>
+                      </div>
                     </div>
+                    <div className="item-price">{formatPrice((item.price || 0) * (item.quantity || 1))}</div>
                   </div>
-                  <div className="item-price">{formatPrice((item.price || 0) * (item.quantity || 1))}</div>
-                </div>
-              ))}
+                );
+              })}
             </div>
+
             <div className="order-summary">
-              <div className="summary-row"><span>Số lượng:</span><span>{totalItems}</span></div>
+              <div className="summary-row"><span>Số lượng:</span><span>{totalItems} phần</span></div>
               <div className="summary-row"><span>Tạm tính:</span><span>{formatPrice(totalPrice)}</span></div>
-              <div className="summary-row"><span>Phí vận chuyển:</span><span>Miễn phí</span></div>
-              <div className="summary-total"><span>Tổng cộng:</span><span>{formatPrice(totalPrice)}</span></div>
+              {appliedCoupon && (
+                <div className="summary-row text-success fw-bold">
+                  <span>Mã giảm giá ({appliedCoupon.code}):</span>
+                  <span>-{formatPrice(discountAmount)}</span>
+                </div>
+              )}
+              <div className="summary-row"><span>Phí vận chuyển:</span><span>{appliedCoupon?.discountType === 'SHIPPING' ? 'Miễn phí (Đã áp voucher)' : 'Miễn phí'}</span></div>
+              <div className="summary-total"><span>Tổng thanh toán:</span><span className="text-warning fs-4">{formatPrice(finalPrice)}</span></div>
             </div>
           </div>
 
           <div className="checkout-actions">
             <button className="checkout-btn" onClick={handleCheckout} disabled={loading}>
-              {loading ? (<><FaSpinner className="spinner" /> Đang xử lý...</>) : "Xác Nhận Đặt Hàng"}
+              {loading ? (<><FaSpinner className="spinner" /> Đang xử lý...</>) : `Xác Nhận Đặt Hàng • ${formatPrice(finalPrice)}`}
             </button>
           </div>
         </div>

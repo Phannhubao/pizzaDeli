@@ -1,8 +1,15 @@
-import { useState, useCallback } from "react";
-import { Modal, Button, Form } from "react-bootstrap";
-import { Icon } from "@mui/material";
-import { PostRegister } from "../../../../../services/ApiService";
+import { useState } from "react";
+import { Modal } from "react-bootstrap";
+import {
+  FaUserPlus,
+  FaUser,
+  FaShieldAlt,
+  FaEye,
+  FaEyeSlash
+} from "react-icons/fa";
 import Swal from "sweetalert2";
+import { PostRegister } from "../../../../../services/ApiService";
+import "../../AdminCrud.css";
 
 const UserAddModal = ({ show, onHide, onUserAdded }) => {
   const [formData, setFormData] = useState({
@@ -11,219 +18,291 @@ const UserAddModal = ({ show, onHide, onUserAdded }) => {
     birthDate: "",
     address: "",
     role: "CUSTOMER",
-    password: "", // Thêm trường password
+    password: ""
   });
-  const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState({});
+  const [loading, setLoading] = useState(false);
 
-  // Xử lý thay đổi input
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: value,
+      [name]: value
     }));
-    // Xóa lỗi khi người dùng nhập lại
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: "" }));
     }
   };
 
-  // Xử lý gửi dữ liệu
-  const handleSubmit = useCallback(async () => {
-    setLoading(true);
-    const newErrors = {};
-    if (!formData.name.trim()) newErrors.name = "Tên không được để trống";
-    if (!formData.email.trim()) newErrors.email = "Email không được để trống";
+  const validate = () => {
+    const errs = {};
+    if (!formData.name.trim()) errs.name = "Họ tên không được để trống";
+    if (!formData.email.trim()) errs.email = "Email không được để trống";
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email))
-      newErrors.email = "Email không hợp lệ";
-    if (!formData.birthDate) newErrors.birthDate = "Ngày sinh không được để trống";
-    if (!formData.address.trim()) newErrors.address = "Địa chỉ không được để trống";
-    if (!formData.password.trim()) newErrors.password = "Mật khẩu không được để trống";
-    else if (formData.password.length < 6) newErrors.password = "Mật khẩu phải có ít nhất 6 ký tự";
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
-      setLoading(false);
-      return;
-    }
+      errs.email = "Địa chỉ email không đúng định dạng";
 
+    if (!formData.password.trim()) errs.password = "Mật khẩu không được để trống";
+    else if (formData.password.length < 6)
+      errs.password = "Mật khẩu phải có ít nhất 6 ký tự";
+
+    if (!formData.address.trim()) errs.address = "Địa chỉ không được để trống";
+
+    setErrors(errs);
+    return Object.keys(errs).length === 0;
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!validate()) return;
+
+    setLoading(true);
     try {
-      const newData = {
+      const payload = {
         ...formData,
         status: "ACTIVE",
-        birthDate: formData.birthDate ? new Date(formData.birthDate).toISOString().split('T')[0] : null,
+        birthDate: formData.birthDate
+          ? new Date(formData.birthDate).toISOString().split("T")[0]
+          : null
       };
-      console.log("Dữ liệu gửi đi:", newData); // Log dữ liệu gửi để debug
-      const response = await PostRegister(newData);
-      console.log("Phản hồi từ server:", response); // Log phản hồi
-      if (response.status === 201 || response.status === 200) {
-        Swal.fire({
+
+      const response = await PostRegister(payload);
+      if (response.status === 200 || response.status === 201) {
+        await Swal.fire({
           icon: "success",
-          title: "Thành công",
-          text: "Đã thêm người dùng thành công",
+          title: "Thêm thành công!",
+          text: `Đã tạo tài khoản cho ${formData.name}`,
           timer: 1500,
-          showConfirmButton: false,
+          showConfirmButton: false
         });
-        if (onUserAdded) onUserAdded();
+
         setFormData({
           name: "",
           email: "",
           birthDate: "",
           address: "",
           role: "CUSTOMER",
-          password: "", // Reset password
-        }); // Reset form sau khi thành công
-      } else {
-        throw new Error(`Yêu cầu thất bại với mã trạng thái: ${response.status}`);
+          password: ""
+        });
+        if (onUserAdded) onUserAdded();
+        onHide();
       }
     } catch (error) {
-      console.error("Lỗi chi tiết:", error.response || error); // Log lỗi chi tiết
-      const errorMessage = error.response?.data?.message || error.message || "Thêm người dùng thất bại. Vui lòng kiểm tra lại thông tin.";
+      console.error("Lỗi khi thêm người dùng:", error);
       Swal.fire({
         icon: "error",
-        title: "Lỗi",
-        text: errorMessage,
+        title: "Tạo tài khoản thất bại",
+        text:
+          error.response?.data?.message ||
+          "Email có thể đã được đăng ký trong hệ thống."
       });
     } finally {
       setLoading(false);
     }
-  }, [formData, onUserAdded]);
-
-  // Reset form khi mở modal
-  const handleShow = () => {
-    setFormData({
-      name: "",
-      email: "",
-      birthDate: "",
-      address: "",
-      role: "CUSTOMER",
-      password: "",
-    });
-    setErrors({});
   };
 
   return (
-    <Modal show={show} onHide={onHide} onShow={handleShow} size="lg" centered>
-      <Modal.Header closeButton className="border-0 pb-0">
-        <Modal.Title className="fw-bold">Thêm người dùng mới</Modal.Title>
-      </Modal.Header>
-      
-      <Modal.Body className="pt-0">
-        <Form>
-          <Form.Group className="mb-3" controlId="formName">
-            <Form.Label>Tên</Form.Label>
-            <Form.Control
-              type="text"
-              name="name"
-              value={formData.name}
-              onChange={handleChange}
-              isInvalid={!!errors.name}
-              placeholder="Nhập tên"
-            />
-            <Form.Control.Feedback type="invalid">
-              {errors.name}
-            </Form.Control.Feedback>
-          </Form.Group>
+    <Modal show={show} onHide={onHide} size="lg" centered>
+      <div className="modal-header-pro">
+        <div className="d-flex align-items-center justify-content-between w-100">
+          <div className="modal-title">
+            <FaUserPlus className="text-primary me-2" />
+            <span>Thêm Tài Khoản Người Dùng Mới</span>
+          </div>
+          <button
+            type="button"
+            className="btn-close"
+            onClick={onHide}
+            aria-label="Close"
+          ></button>
+        </div>
+      </div>
 
-          <Form.Group className="mb-3" controlId="formEmail">
-            <Form.Label>Email</Form.Label>
-            <Form.Control
-              type="email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              isInvalid={!!errors.email}
-              placeholder="Nhập email"
-            />
-            <Form.Control.Feedback type="invalid">
-              {errors.email}
-            </Form.Control.Feedback>
-          </Form.Group>
-
-          <Form.Group className="mb-3" controlId="formBirthDate">
-            <Form.Label>Ngày sinh</Form.Label>
-            <Form.Control
-              type="date"
-              name="birthDate"
-              value={formData.birthDate}
-              onChange={handleChange}
-              isInvalid={!!errors.birthDate}
-              max={new Date().toISOString().split('T')[0]} // Giới hạn ngày không vượt quá hôm nay
-            />
-            <Form.Control.Feedback type="invalid">
-              {errors.birthDate}
-            </Form.Control.Feedback>
-          </Form.Group>
-
-          <Form.Group className="mb-3" controlId="formAddress">
-            <Form.Label>Địa chỉ</Form.Label>
-            <Form.Control
-              type="text"
-              name="address"
-              value={formData.address}
-              onChange={handleChange}
-              isInvalid={!!errors.address}
-              placeholder="Nhập địa chỉ"
-            />
-            <Form.Control.Feedback type="invalid">
-              {errors.address}
-            </Form.Control.Feedback>
-          </Form.Group>
-
-          <Form.Group className="mb-3" controlId="formPassword">
-            <Form.Label>Mật khẩu</Form.Label>
-            <Form.Control
-              type="password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              isInvalid={!!errors.password}
-              placeholder="Nhập mật khẩu"
-            />
-            <Form.Control.Feedback type="invalid">
-              {errors.password}
-            </Form.Control.Feedback>
-          </Form.Group>
-
-          <Form.Group className="mb-3" controlId="formRole">
-            <Form.Label>Vai trò</Form.Label>
-            <Form.Select
-              name="role"
-              value={formData.role}
-              onChange={handleChange}
+      <form onSubmit={handleSubmit}>
+        <div className="modal-body-pro">
+          {/* Role Selection Cards */}
+          <label className="crud-label mb-2">Vai trò tài khoản:</label>
+          <div className="role-select-cards">
+            <div
+              className={`role-card-option ${
+                formData.role === "CUSTOMER" ? "selected" : ""
+              }`}
+              onClick={() =>
+                setFormData((prev) => ({ ...prev, role: "CUSTOMER" }))
+              }
             >
-              <option value="CUSTOMER">Người dùng</option>
-              <option value="ADMIN">Quản trị viên</option>
-            </Form.Select>
-          </Form.Group>
-        </Form>
-      </Modal.Body>
-      
-      <Modal.Footer className="border-0">
-        <Button variant="secondary" onClick={onHide}>
-          <Icon className="me-1">close</Icon> Hủy
-        </Button>
-        <Button
-          variant="primary"
-          onClick={handleSubmit}
-          disabled={loading}
-        >
-          {loading ? (
-            <>
-              <span
-                className="spinner-border spinner-border-sm me-1"
-                role="status"
-                aria-hidden="true"
-              ></span>
-              Đang xử lý...
-            </>
-          ) : (
-            <>
-              <Icon className="me-1">save</Icon> Lưu
-            </>
-          )}
-        </Button>
-      </Modal.Footer>
+              <div className="role-card-icon text-primary">
+                <FaUser />
+              </div>
+              <div className="role-card-title">Khách Hàng (CUSTOMER)</div>
+              <div className="role-card-desc">
+                Đặt hàng, tích điểm, nhận khuyến mãi
+              </div>
+            </div>
+
+            <div
+              className={`role-card-option ${
+                formData.role === "ADMIN" ? "selected" : ""
+              }`}
+              onClick={() =>
+                setFormData((prev) => ({ ...prev, role: "ADMIN" }))
+              }
+            >
+              <div className="role-card-icon text-danger">
+                <FaShieldAlt />
+              </div>
+              <div className="role-card-title">Quản Trị Viên (ADMIN)</div>
+              <div className="role-card-desc">
+                Toàn quyền quản lý đơn, thực đơn, khách hàng
+              </div>
+            </div>
+          </div>
+
+          <div className="row g-3">
+            {/* Họ và tên */}
+            <div className="col-md-6">
+              <div className="crud-form-group">
+                <label className="crud-label">
+                  Họ và tên <span className="required">*</span>
+                </label>
+                <div className="position-relative">
+                  <input
+                    type="text"
+                    name="name"
+                    className={`crud-input ${errors.name ? "is-invalid" : ""}`}
+                    placeholder="Nguyễn Văn A"
+                    value={formData.name}
+                    onChange={handleChange}
+                  />
+                </div>
+                {errors.name && (
+                  <div className="crud-feedback-error">
+                    <span>{errors.name}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Email */}
+            <div className="col-md-6">
+              <div className="crud-form-group">
+                <label className="crud-label">
+                  Địa chỉ Email <span className="required">*</span>
+                </label>
+                <input
+                  type="email"
+                  name="email"
+                  className={`crud-input ${errors.email ? "is-invalid" : ""}`}
+                  placeholder="example@gmail.com"
+                  value={formData.email}
+                  onChange={handleChange}
+                />
+                {errors.email && (
+                  <div className="crud-feedback-error">
+                    <span>{errors.email}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Mật khẩu */}
+            <div className="col-md-6">
+              <div className="crud-form-group">
+                <label className="crud-label">
+                  Mật khẩu đăng nhập <span className="required">*</span>
+                </label>
+                <div className="position-relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    name="password"
+                    className={`crud-input ${errors.password ? "is-invalid" : ""}`}
+                    placeholder="Tối thiểu 6 ký tự"
+                    value={formData.password}
+                    onChange={handleChange}
+                    style={{ paddingRight: "40px" }}
+                  />
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-link text-muted position-absolute top-50 end-0 translate-middle-y me-2 p-0"
+                    onClick={() => setShowPassword((prev) => !prev)}
+                  >
+                    {showPassword ? <FaEyeSlash /> : <FaEye />}
+                  </button>
+                </div>
+                {errors.password && (
+                  <div className="crud-feedback-error">
+                    <span>{errors.password}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Ngày sinh */}
+            <div className="col-md-6">
+              <div className="crud-form-group">
+                <label className="crud-label">Ngày sinh (Tùy chọn)</label>
+                <input
+                  type="date"
+                  name="birthDate"
+                  className="crud-input"
+                  value={formData.birthDate}
+                  onChange={handleChange}
+                />
+              </div>
+            </div>
+
+            {/* Địa chỉ */}
+            <div className="col-12">
+              <div className="crud-form-group mb-0">
+                <label className="crud-label">
+                  Địa chỉ giao hàng <span className="required">*</span>
+                </label>
+                <input
+                  type="text"
+                  name="address"
+                  className={`crud-input ${errors.address ? "is-invalid" : ""}`}
+                  placeholder="Số nhà, tên đường, phường, quận/huyện..."
+                  value={formData.address}
+                  onChange={handleChange}
+                />
+                {errors.address && (
+                  <div className="crud-feedback-error">
+                    <span>{errors.address}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="modal-footer-pro">
+          <button
+            type="button"
+            className="crud-btn-secondary"
+            onClick={onHide}
+            disabled={loading}
+          >
+            Hủy bỏ
+          </button>
+          <button
+            type="submit"
+            className="crud-btn-primary"
+            disabled={loading}
+          >
+            {loading ? (
+              <>
+                <span className="spinner-border spinner-border-sm me-1"></span>
+                <span>Đang xử lý...</span>
+              </>
+            ) : (
+              <>
+                <FaUserPlus />
+                <span>Tạo tài khoản</span>
+              </>
+            )}
+          </button>
+        </div>
+      </form>
     </Modal>
   );
 };

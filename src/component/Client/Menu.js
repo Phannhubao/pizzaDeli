@@ -2,13 +2,14 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import "../../css/menu.css";
+import { Domain } from "../../services/Domain";
 
 const Menu = () => {
   const [categories, setCategories] = useState([]);
   const navigate = useNavigate();
 
   useEffect(() => {
-    axios.get("https://deli-api.onrender.com/api/categories")
+    axios.get(`${Domain}/api/categories`)
       .then((response) => {
         console.log("API Data:", response.data);
         const data = response.data.data || response.data;

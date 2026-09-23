@@ -2,24 +2,40 @@ import React from "react";
 import { FaPlus } from "react-icons/fa";
 import Swal from "sweetalert2";
 import { useCart } from "../../context/CartContext";
+import "../../css/HomeModern.css";
 
 const ProductCard = ({ product, onClick }) => {
   const { addToCart } = useCart();
 
   const formatPrice = (price) => {
-    return new Intl.NumberFormat("vi-VN").format(price) + " đ";
+    return new Intl.NumberFormat("vi-VN").format(price || 0) + " đ";
   };
 
   const handleAddToCart = (e) => {
     e.stopPropagation();
     const pid = product?.productId ?? product?.id;
     if (!product || pid === undefined || pid === null) {
-      console.error("Product or productId không hợp lệ:", product);
+      return;
+    }
+
+    if (product.active === false) {
       Swal.fire({
-        icon: "error",
-        title: "Lỗi",
-        text: "Sản phẩm không hợp lệ",
-        showConfirmButton: true,
+        icon: "info",
+        title: "Tạm ngưng phục vụ",
+        text: `Món "${product.productName || 'sản phẩm'}" hiện đang tạm ngưng phục vụ.`,
+        timer: 1800,
+        showConfirmButton: false
+      });
+      return;
+    }
+
+    if (product.stock !== undefined && product.stock !== null && Number(product.stock) <= 0) {
+      Swal.fire({
+        icon: "warning",
+        title: "Hết hàng",
+        text: `Món "${product.productName || 'sản phẩm'}" hiện đã hết hàng. Vui lòng chọn món khác!`,
+        timer: 1800,
+        showConfirmButton: false
       });
       return;
     }
@@ -27,46 +43,75 @@ const ProductCard = ({ product, onClick }) => {
     try {
       addToCart(product, 1);
 
-      // Hiển thị thông báo thành công
       Swal.fire({
         position: "top-end",
         icon: "success",
-        title: "Đã thêm vào giỏ hàng",
-        text: `${product.productName || product.name || 'Sản phẩm'} đã được thêm vào giỏ hàng`,
+        title: "Đã thêm vào giỏ hàng!",
+        text: `${product.productName || 'Món ăn'} (1 phần)`,
         showConfirmButton: false,
         timer: 1500,
         toast: true,
-        background: "#f8f9fa",
-        iconColor: "#28a745",
+        background: "#fffdf9",
+        iconColor: "#ea580c",
       });
     } catch (error) {
       console.error("Error handling cart:", error);
-      Swal.fire({
-        icon: "error",
-        title: "Lỗi",
-        text: "Không thể thêm vào giỏ hàng. Vui lòng thử lại.",
-        showConfirmButton: true,
-      });
     }
   };
 
+  const isOutOfStock =
+    product?.stock !== undefined && product?.stock !== null && Number(product.stock) <= 0;
+
+  const imgSrc =
+    product.image?.startsWith("../")
+      ? product.image.substring(2)
+      : product.image || "/img/default-product.png";
+
   return (
-    <div className="col-lg-3 col-md-4 col-sm-6 mb-4" onClick={onClick} style={{ cursor: "pointer" }}>
-      <div className="product-card">
-        {product.tag && <span className="product-tag">{product.tag}</span>}
-        <div className="product-image-container">
+    <div className="col-xl-3 col-lg-4 col-md-6 col-sm-6 mb-4">
+      <div
+        className={`product-card-modern ${isOutOfStock ? "opacity-75" : ""}`}
+        onClick={onClick}
+      >
+        {/* Image Box */}
+        <div className="product-card-img-box">
+          {isOutOfStock ? (
+            <span className="product-card-badge out-of-stock">Hết hàng</span>
+          ) : product.tag ? (
+            <span className="product-card-badge">{product.tag}</span>
+          ) : null}
+
           <img
-            src={product.image?.startsWith("../") ? product.image.substring(2) : product.image || "img/default-product.png"}
-            alt={product.productName || "Product Image"}
-            className="product-image"
+            src={imgSrc}
+            alt={product.productName || "Product"}
+            onError={(e) => {
+              e.target.src = "/img/default-product.png";
+            }}
           />
         </div>
-        <div className="product-info">
-          <h3 className="product-name">{product.productName || "Unnamed Product"}</h3>
-          <p className="product-description">{product.description || "No description"}</p>
-          <div className="d-flex justify-content-between align-items-center">
-            <p className="product-price mb-0">{formatPrice(product.price || 0)}</p>
-            <button className="btn-add-to-cart" onClick={handleAddToCart}>
+
+        {/* Info */}
+        <div className="product-card-body">
+          <h3 className="product-card-title text-truncate" title={product.productName}>
+            {product.productName || "Món ăn chưa có tên"}
+          </h3>
+
+          <p className="product-card-desc">
+            {product.description || "Hương vị ẩm thực Ý truyền thống kết hợp nguyên liệu cao cấp tươi ngon."}
+          </p>
+
+          <div className="product-card-footer">
+            <span className="product-card-price">
+              {formatPrice(product.price)}
+            </span>
+
+            <button
+              type="button"
+              className="btn-card-add-cart"
+              onClick={handleAddToCart}
+              disabled={isOutOfStock || product.active === false}
+              title={isOutOfStock ? "Đã hết hàng" : "Thêm vào giỏ"}
+            >
               <FaPlus />
             </button>
           </div>
