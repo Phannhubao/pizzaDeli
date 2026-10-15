@@ -34,6 +34,15 @@ export default function UpdateProduct() {
     price: "",
     stock: "",
     description: "",
+    ingredients: "",
+    spicyLevel: 0,
+    cheeseLevel: 3,
+    calories: "",
+    servingSize: "2-3 người",
+    isVegetarian: false,
+    allergens: "",
+    occasions: "",
+    pairsWith: "",
     categoryId: "",
     active: true
   });
@@ -79,6 +88,15 @@ export default function UpdateProduct() {
             price: p.price || "",
             stock: p.stock ?? 50,
             description: p.description || "",
+            ingredients: p.ingredients || "",
+            spicyLevel: p.spicyLevel ?? 0,
+            cheeseLevel: p.cheeseLevel ?? 3,
+            calories: p.calories || "",
+            servingSize: p.servingSize || "2-3 người",
+            isVegetarian: p.isVegetarian ?? false,
+            allergens: p.allergens || "",
+            occasions: p.occasions || "",
+            pairsWith: p.pairsWith || "",
             categoryId: String(p.category?.categoryId || p.categoryId || ""),
             active: p.active ?? true
           });
@@ -143,6 +161,15 @@ export default function UpdateProduct() {
         price: Number(formData.price),
         stock: Number(formData.stock),
         description: formData.description?.trim() || "",
+        ingredients: formData.ingredients?.trim() || "",
+        spicyLevel: Number(formData.spicyLevel) || 0,
+        cheeseLevel: Number(formData.cheeseLevel) || 3,
+        calories: formData.calories ? Number(formData.calories) : null,
+        servingSize: formData.servingSize?.trim() || "",
+        isVegetarian: Boolean(formData.isVegetarian),
+        allergens: formData.allergens?.trim() || "",
+        occasions: formData.occasions?.trim() || "",
+        pairsWith: formData.pairsWith?.trim() || "",
         active: formData.active,
         category: { categoryId: Number(formData.categoryId) }
       };
@@ -478,6 +505,145 @@ export default function UpdateProduct() {
                     value={formData.description}
                     onChange={handleInputChange}
                   ></textarea>
+                </div>
+              </div>
+            </div>
+
+            {/* Thuộc tính RAG / AI Recommendation Metadata */}
+            <div className="crud-card">
+              <div className="crud-card-header">
+                <div className="crud-card-title">
+                  <span style={{ fontSize: "1.2rem" }}>🤖</span>
+                  <span>Thuộc Tính Đề Xuất AI (RAG Metadata)</span>
+                </div>
+                <span className="badge bg-warning text-dark">RAG Powered</span>
+              </div>
+              <div className="crud-card-body">
+                {/* Nguyên liệu chi tiết */}
+                <div className="crud-form-group">
+                  <label className="crud-label">Nguyên liệu chi tiết (Cho RAG phân tích)</label>
+                  <input
+                    type="text"
+                    name="ingredients"
+                    className="crud-input"
+                    placeholder="VD: Tôm sú, mực tươi, phô mai Mozzarella, sốt Pesto..."
+                    value={formData.ingredients}
+                    onChange={handleInputChange}
+                  />
+                  <div className="crud-helper-text">Giúp AI nhận diện thành phần món, sở thích và tránh dị ứng.</div>
+                </div>
+
+                <div className="row g-3">
+                  <div className="col-md-6">
+                    <div className="crud-form-group">
+                      <label className="crud-label">Độ cay (0: Không cay, 3: Cay nồng)</label>
+                      <select name="spicyLevel" className="crud-select" value={formData.spicyLevel} onChange={handleInputChange}>
+                        <option value="0">0 - Không cay (Trẻ em ăn được)</option>
+                        <option value="1">1 - Cay nhẹ</option>
+                        <option value="2">2 - Cay vừa</option>
+                        <option value="3">3 - Cay nồng</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="col-md-6">
+                    <div className="crud-form-group">
+                      <label className="crud-label">Độ béo phô mai (1 - 5)</label>
+                      <select name="cheeseLevel" className="crud-select" value={formData.cheeseLevel} onChange={handleInputChange}>
+                        <option value="1">1 - Rất ít phô mai / Thanh nhẹ</option>
+                        <option value="2">2 - Vừa phải</option>
+                        <option value="3">3 - Tiêu chuẩn</option>
+                        <option value="4">4 - Ngập tràn phô mai</option>
+                        <option value="5">5 - Siêu béo ngậy</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="row g-3">
+                  <div className="col-md-6">
+                    <div className="crud-form-group">
+                      <label className="crud-label">Năng lượng ước tính (Calo - kcal)</label>
+                      <input
+                        type="number"
+                        name="calories"
+                        className="crud-input"
+                        placeholder="VD: 850"
+                        value={formData.calories}
+                        onChange={handleInputChange}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="col-md-6">
+                    <div className="crud-form-group">
+                      <label className="crud-label">Khẩu phần ăn</label>
+                      <input
+                        type="text"
+                        name="servingSize"
+                        className="crud-input"
+                        placeholder="VD: 1-2 người hoặc 3-4 người"
+                        value={formData.servingSize}
+                        onChange={handleInputChange}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="row g-3">
+                  <div className="col-md-6">
+                    <div className="crud-form-group">
+                      <label className="crud-label">Cảnh báo dị ứng</label>
+                      <input
+                        type="text"
+                        name="allergens"
+                        className="crud-input"
+                        placeholder="VD: Hải sản, Lactose, Gluten"
+                        value={formData.allergens}
+                        onChange={handleInputChange}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="col-md-6">
+                    <div className="crud-form-group">
+                      <label className="crud-label">Dịp & Đối tượng phù hợp</label>
+                      <input
+                        type="text"
+                        name="occasions"
+                        className="crud-input"
+                        placeholder="VD: Cặp đôi, Trẻ em, Gia đình, Tiệc tùng"
+                        value={formData.occasions}
+                        onChange={handleInputChange}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="crud-form-group">
+                  <label className="crud-label">Gợi ý món ăn kèm (Food Pairing)</label>
+                  <input
+                    type="text"
+                    name="pairsWith"
+                    className="crud-input"
+                    placeholder="VD: Coca-Cola Zero, Salad cá ngừ"
+                    value={formData.pairsWith}
+                    onChange={handleInputChange}
+                  />
+                </div>
+
+                <div className="form-check form-switch mt-2">
+                  <input
+                    className="form-check-input"
+                    type="checkbox"
+                    id="isVegetarianUpdateSwitch"
+                    name="isVegetarian"
+                    checked={formData.isVegetarian}
+                    onChange={handleInputChange}
+                  />
+                  <label className="form-check-label text-success fw-bold" htmlFor="isVegetarianUpdateSwitch">
+                    🌱 Món chay (Vegetarian)
+                  </label>
                 </div>
               </div>
             </div>

@@ -255,7 +255,10 @@ export const CartProvider = ({ children }) => {
     );
   }, [cartItems]);
 
-  // Tính số tiền được giảm từ coupon
+  // Phí vận chuyển tiêu chuẩn 30.000đ
+  const DEFAULT_SHIPPING_FEE = 30000;
+
+  // Tính số tiền được giảm từ coupon (chỉ giảm trên giá món)
   const discountAmount = useMemo(() => {
     if (!appliedCoupon || totalPrice <= 0) return 0;
     if (appliedCoupon.minOrder && totalPrice < appliedCoupon.minOrder) {
@@ -268,18 +271,31 @@ export const CartProvider = ({ children }) => {
       if (appliedCoupon.maxDiscount && discount > appliedCoupon.maxDiscount) {
         discount = appliedCoupon.maxDiscount;
       }
+    } else if (appliedCoupon.discountType === 'SHIPPING' || appliedCoupon.code === 'FREESHIP') {
+      // Giảm trực tiếp ở phí vận chuyển, không trừ 2 lần
+      discount = 0;
     } else {
-      // FIXED hoặc SHIPPING
-      discount = appliedCoupon.discountValue;
+      // FIXED
+      discount = appliedCoupon.discountValue || 0;
     }
 
     return Math.min(totalPrice, discount);
   }, [appliedCoupon, totalPrice]);
 
-  // Tổng tiền sau giảm giá
+  // Phí vận chuyển: 30.000đ khi có món trong giỏ, miễn phí khi áp mã FREESHIP
+  const shippingFee = useMemo(() => {
+    if (!cartItems || cartItems.length === 0) return 0;
+    if (appliedCoupon?.discountType === 'SHIPPING' || appliedCoupon?.code === 'FREESHIP') {
+      return 0;
+    }
+    return DEFAULT_SHIPPING_FEE;
+  }, [cartItems, appliedCoupon]);
+
+  // Tổng tiền thanh toán = Tiền món - Giảm giá + Phí vận chuyển (30k)
   const finalPrice = useMemo(() => {
-    return Math.max(0, totalPrice - discountAmount);
-  }, [totalPrice, discountAmount]);
+    if (!cartItems || cartItems.length === 0) return 0;
+    return Math.max(0, totalPrice - discountAmount + shippingFee);
+  }, [totalPrice, discountAmount, shippingFee, cartItems]);
 
   // Áp dụng coupon - Gọi API backend để kiểm tra xác thực trước
   const applyCoupon = useCallback(async (couponCode) => {
@@ -356,6 +372,7 @@ export const CartProvider = ({ children }) => {
         totalPrice,
         appliedCoupon,
         discountAmount,
+        shippingFee,
         finalPrice,
         applyCoupon,
         removeCoupon,

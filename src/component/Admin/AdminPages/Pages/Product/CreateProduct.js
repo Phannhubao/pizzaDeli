@@ -20,6 +20,15 @@ export default function CreateProduct() {
     price: "",
     stock: "50",
     description: "",
+    ingredients: "",
+    spicyLevel: 0,
+    cheeseLevel: 3,
+    calories: "",
+    servingSize: "2-3 người",
+    isVegetarian: false,
+    allergens: "",
+    occasions: "",
+    pairsWith: "",
     active: true,
     categoryId: ""
   });
@@ -151,6 +160,15 @@ export default function CreateProduct() {
         price: Number(product.price),
         stock: Number(product.stock),
         description: product.description.trim(),
+        ingredients: product.ingredients?.trim() || "",
+        spicyLevel: Number(product.spicyLevel) || 0,
+        cheeseLevel: Number(product.cheeseLevel) || 3,
+        calories: product.calories ? Number(product.calories) : null,
+        servingSize: product.servingSize?.trim() || "",
+        isVegetarian: Boolean(product.isVegetarian),
+        allergens: product.allergens?.trim() || "",
+        occasions: product.occasions?.trim() || "",
+        pairsWith: product.pairsWith?.trim() || "",
         active: product.active,
         category: { categoryId: Number(product.categoryId) }
       };
@@ -415,6 +433,145 @@ export default function CreateProduct() {
                   <div className="crud-char-counter">
                     {product.description?.length || 0} ký tự
                   </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Thuộc tính RAG / AI Recommendation Metadata */}
+            <div className="crud-card">
+              <div className="crud-card-header">
+                <div className="crud-card-title">
+                  <span style={{ fontSize: "1.2rem" }}>🤖</span>
+                  <span>Thuộc Tính Đề Xuất AI (RAG Metadata)</span>
+                </div>
+                <span className="badge bg-warning text-dark">RAG Powered</span>
+              </div>
+              <div className="crud-card-body">
+                {/* Nguyên liệu chi tiết */}
+                <div className="crud-form-group">
+                  <label className="crud-label">Nguyên liệu chi tiết (Cho RAG phân tích)</label>
+                  <input
+                    type="text"
+                    name="ingredients"
+                    className="crud-input"
+                    placeholder="VD: Tôm sú, mực tươi, phô mai Mozzarella, sốt Pesto..."
+                    value={product.ingredients}
+                    onChange={handleInputChange}
+                  />
+                  <div className="crud-helper-text">Giúp AI nhận diện thành phần món, sở thích và tránh dị ứng.</div>
+                </div>
+
+                <div className="row g-3">
+                  <div className="col-md-6">
+                    <div className="crud-form-group">
+                      <label className="crud-label">Độ cay (0: Không cay, 3: Cay nồng)</label>
+                      <select name="spicyLevel" className="crud-select" value={product.spicyLevel} onChange={handleInputChange}>
+                        <option value="0">0 - Không cay (Trẻ em ăn được)</option>
+                        <option value="1">1 - Cay nhẹ</option>
+                        <option value="2">2 - Cay vừa</option>
+                        <option value="3">3 - Cay nồng</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="col-md-6">
+                    <div className="crud-form-group">
+                      <label className="crud-label">Độ béo phô mai (1 - 5)</label>
+                      <select name="cheeseLevel" className="crud-select" value={product.cheeseLevel} onChange={handleInputChange}>
+                        <option value="1">1 - Rất ít phô mai / Thanh nhẹ</option>
+                        <option value="2">2 - Vừa phải</option>
+                        <option value="3">3 - Tiêu chuẩn</option>
+                        <option value="4">4 - Ngập tràn phô mai</option>
+                        <option value="5">5 - Siêu béo ngậy</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="row g-3">
+                  <div className="col-md-6">
+                    <div className="crud-form-group">
+                      <label className="crud-label">Năng lượng ước tính (Calo - kcal)</label>
+                      <input
+                        type="number"
+                        name="calories"
+                        className="crud-input"
+                        placeholder="VD: 850"
+                        value={product.calories}
+                        onChange={handleInputChange}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="col-md-6">
+                    <div className="crud-form-group">
+                      <label className="crud-label">Khẩu phần ăn</label>
+                      <input
+                        type="text"
+                        name="servingSize"
+                        className="crud-input"
+                        placeholder="VD: 1-2 người hoặc 3-4 người"
+                        value={product.servingSize}
+                        onChange={handleInputChange}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="row g-3">
+                  <div className="col-md-6">
+                    <div className="crud-form-group">
+                      <label className="crud-label">Cảnh báo dị ứng</label>
+                      <input
+                        type="text"
+                        name="allergens"
+                        className="crud-input"
+                        placeholder="VD: Hải sản, Lactose, Gluten"
+                        value={product.allergens}
+                        onChange={handleInputChange}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="col-md-6">
+                    <div className="crud-form-group">
+                      <label className="crud-label">Dịp & Đối tượng phù hợp</label>
+                      <input
+                        type="text"
+                        name="occasions"
+                        className="crud-input"
+                        placeholder="VD: Cặp đôi, Trẻ em, Gia đình, Tiệc tùng"
+                        value={product.occasions}
+                        onChange={handleInputChange}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="crud-form-group">
+                  <label className="crud-label">Gợi ý món ăn kèm (Food Pairing)</label>
+                  <input
+                    type="text"
+                    name="pairsWith"
+                    className="crud-input"
+                    placeholder="VD: Coca-Cola Zero, Salad cá ngừ"
+                    value={product.pairsWith}
+                    onChange={handleInputChange}
+                  />
+                </div>
+
+                <div className="form-check form-switch mt-2">
+                  <input
+                    className="form-check-input"
+                    type="checkbox"
+                    id="isVegetarianSwitch"
+                    name="isVegetarian"
+                    checked={product.isVegetarian}
+                    onChange={handleInputChange}
+                  />
+                  <label className="form-check-label text-success fw-bold" htmlFor="isVegetarianSwitch">
+                    🌱 Món chay (Vegetarian)
+                  </label>
                 </div>
               </div>
             </div>

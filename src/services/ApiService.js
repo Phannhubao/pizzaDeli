@@ -235,6 +235,11 @@ export {
   GetCategoryList,
   PostCategory,
 
+  // AUTH
+  PostLogin,
+  PostLogout,
+  PutPassword,
+
   // ORDER
   GetAllOrders,
   GetOrdersByUserID,
@@ -244,6 +249,7 @@ export {
   PutOrderStatus,
   CheckOrderProduct,
   PostOrderDetail,
+  GetOrderDetailList,
   GetDetailListByOrder,
 
   // PAYMENT
@@ -252,9 +258,47 @@ export {
   GetPaymentList,
   GetPaymentByOrderId,
 
-  // AUTH
-  PostLogin,
-  PostLogout,
-  GetOrderDetailList,
-  PutPassword,
+  // REVIEWS & FEEDBACK ====================
+  GetReviewsByProductId,
+  GetAllReviews,
+  GetFeebackList,
+  PostReview,
+  DeleteReview,
+  CheckCanReview,
 };
+
+// REVIEWS IMPLEMENTATION
+async function GetReviewsByProductId(productId) {
+  const res = await axios.get(`${Domain}/api/reviews/product/${productId}`);
+  return Array.isArray(res.data?.data) ? res.data.data : [];
+}
+
+async function GetAllReviews() {
+  const res = await axios.get(`${Domain}/api/reviews`);
+  return Array.isArray(res.data?.data) ? res.data.data : [];
+}
+
+async function GetFeebackList() {
+  const res = await axios.get(`${Domain}/api/reviews`);
+  return {
+    status: res.status,
+    data: Array.isArray(res.data?.data) ? res.data.data : []
+  };
+}
+
+async function PostReview(reviewData) {
+  return await axios.post(`${Domain}/api/reviews`, reviewData);
+}
+
+async function DeleteReview(reviewId) {
+  return await axios.delete(`${Domain}/api/reviews/${reviewId}`);
+}
+
+async function CheckCanReview(userId, productId) {
+  try {
+    const res = await axios.get(`${Domain}/api/reviews/checkCanReview/${userId}/${productId}`);
+    return Boolean(res.data?.data);
+  } catch {
+    return false;
+  }
+}

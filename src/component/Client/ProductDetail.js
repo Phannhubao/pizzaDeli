@@ -6,6 +6,7 @@ import "../../css/detail.css";
 import Swal from "sweetalert2";
 import { Domain } from "../../services/Domain";
 import { useCart } from "../../context/CartContext";
+import ProductReviews from "./ProductReviews";
 
 const SIZES = [
   { id: "s", name: "Nhỏ (S - 7\")", extraPrice: 0, desc: "4 miếng • 1 người ăn" },
@@ -363,6 +364,12 @@ const ProductDetail = () => {
           </div>
         </div>
       </div>
+
+      {/* Đánh Giá & Nhận Xét Sản Phẩm */}
+      <ProductReviews
+        productId={product.productId || id}
+        productName={product.productName || product.name}
+      />
     </div>
   );
 };

@@ -98,9 +98,12 @@ const Header = () => {
                   {userToken.email}
                 </Dropdown.Toggle>
                 <Dropdown.Menu>
-                  <Dropdown.Item onClick={handleLogout}>Logout</Dropdown.Item>
-                   <Dropdown.Item as={Link} to="/profile" >
-                    Profile
+                  <Dropdown.Item as={Link} to="/profile">
+                    👤 Profile / Tài khoản
+                  </Dropdown.Item>
+                  <Dropdown.Divider />
+                  <Dropdown.Item onClick={handleLogout} className="text-danger">
+                    🚪 Đăng xuất
                   </Dropdown.Item>
                 </Dropdown.Menu>
               </Dropdown>

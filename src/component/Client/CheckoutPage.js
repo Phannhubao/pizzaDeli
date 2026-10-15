@@ -7,6 +7,7 @@ import '../../css/checkout.css';
 import Swal from "sweetalert2"; 
 import { useCart } from "../../context/CartContext";
 import { Domain } from "../../services/Domain";
+import { GetUserByID, GetOrdersByUserID } from "../../services/ApiService";
 
 // Hàm format datetime theo chuẩn VNPay (yyyyMMddHHmmss, GMT+7)
 const formatDateVN = (date) => {
@@ -36,6 +37,7 @@ const CheckoutPage = () => {
     totalPrice,
     appliedCoupon,
     discountAmount,
+    shippingFee,
     finalPrice,
     clearCart
   } = useCart();
@@ -65,19 +67,66 @@ const CheckoutPage = () => {
   };
 
   useEffect(() => {
-    const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
-    if (currentUser.fullName || currentUser.username) {
-      setCustomerInfo(prev => ({
-        ...prev,
-        fullName: currentUser.fullName || currentUser.username,
-        email: currentUser.email || ""
-      }));
-    }
-
-    // Chỉ chuyển về giỏ hàng khi chưa hoàn thành đặt hàng và giỏ hàng trống
+    // 1. Chỉ chuyển về giỏ hàng khi chưa hoàn thành đặt hàng và giỏ hàng trống
     if (!orderSuccess && (!cartItems || cartItems.length === 0)) {
       navigate("/cart");
+      return;
     }
+
+    // 2. Tự động lấy thông tin từ tài khoản đăng ký & đơn hàng gần nhất
+    const loadRegisteredUserData = async () => {
+      try {
+        const storedUser = JSON.parse(localStorage.getItem("user") || "{}");
+        const userId = storedUser?.id || storedUser?.userId;
+
+        let defaultName = storedUser?.name || storedUser?.fullName || "";
+        let defaultEmail = storedUser?.email || "";
+        let defaultAddress = localStorage.getItem("saved_checkout_address") || "";
+        let defaultPhone = localStorage.getItem("saved_checkout_phone") || "";
+
+        if (userId) {
+          try {
+            const userRes = await GetUserByID(userId);
+            const uData = userRes?.data || userRes;
+            if (uData) {
+              if (uData.name) defaultName = uData.name;
+              if (uData.email) defaultEmail = uData.email;
+              if (uData.address) defaultAddress = uData.address;
+            }
+          } catch (e) {
+            console.error("Lỗi lấy thông tin user đăng ký:", e);
+          }
+
+          // Lấy thêm số điện thoại / địa chỉ từ đơn hàng gần nhất nếu có
+          try {
+            const orders = await GetOrdersByUserID(userId);
+            if (Array.isArray(orders) && orders.length > 0) {
+              const lastOrder = orders[0];
+              if (!defaultPhone && lastOrder.phone_number) {
+                defaultPhone = lastOrder.phone_number;
+              }
+              if (!defaultAddress && lastOrder.address) {
+                defaultAddress = lastOrder.address;
+              }
+            }
+          } catch (e) {
+            console.error("Lỗi lấy lịch sử đơn hàng:", e);
+          }
+        }
+
+        setCustomerInfo(prev => ({
+          ...prev,
+          fullName: prev.fullName || defaultName,
+          email: prev.email || defaultEmail,
+          address: prev.address || defaultAddress,
+          phone: prev.phone || defaultPhone
+        }));
+      } catch (err) {
+        console.error("Lỗi tự động điền thông tin đăng ký:", err);
+      }
+    };
+
+    loadRegisteredUserData();
   }, [navigate, cartItems, orderSuccess]);
 
   const formatPrice = price =>
@@ -219,6 +268,11 @@ const CheckoutPage = () => {
     }
 
     if (!validateForm()) return;
+
+    // Lưu lại số điện thoại & địa chỉ vào localStorage để lần sau tự điền
+    if (customerInfo.phone) localStorage.setItem("saved_checkout_phone", customerInfo.phone);
+    if (customerInfo.address) localStorage.setItem("saved_checkout_address", customerInfo.address);
+
     setLoading(true);
 
     try {
@@ -255,15 +309,17 @@ const CheckoutPage = () => {
               <p style="margin-bottom: 0;"><b>Hình thức:</b> Thanh toán khi nhận hàng (COD)</p>
             </div>
           `,
-          confirmButtonText: "Xem Đơn Hàng Của Bạn",
-          confirmButtonColor: "#28a745",
+          confirmButtonText: "Xem Đơn Hàng",
+          confirmButtonColor: "#c9a66b",
           showCancelButton: true,
-          cancelButtonText: "Tiếp Tục Mua Sắm",
-          cancelButtonColor: "#c9a66b",
+          cancelButtonText: "Về Trang Chủ",
+          cancelButtonColor: "#6c757d",
           allowOutsideClick: false
         }).then((result) => {
           if (result.isConfirmed) {
             navigate("/profile");
+          } else {
+            navigate("/");
           }
         });
         
@@ -354,7 +410,7 @@ const CheckoutPage = () => {
               <p><strong>Phương thức:</strong> Thanh toán khi nhận hàng (COD)</p>
               <p><strong>Tổng thanh toán:</strong> <span className="text-danger fw-bold">{formatPrice(displayOrder.finalPrice)}</span></p>
             </div>
-            <div style={{ display: "flex", gap: "12px", justifyContent: "center", marginTop: "20px" }}>
+            <div style={{ display: "flex", gap: "12px", justifyContent: "center", marginTop: "20px", flexWrap: "wrap" }}>
               <button className="continue-shopping" onClick={() => navigate("/")}>
                 Tiếp Tục Mua Sắm
               </button>
@@ -363,7 +419,7 @@ const CheckoutPage = () => {
                 style={{ backgroundColor: "#28a745", borderColor: "#28a745" }}
                 onClick={() => navigate("/profile")}
               >
-                Xem Đơn Hàng Của Bạn
+                Xem Lịch Sử Đơn
               </button>
             </div>
           </div>
@@ -385,7 +441,14 @@ const CheckoutPage = () => {
         <div className="checkout-content">
           {/* Thông tin khách hàng */}
           <div className="checkout-section">
-            <h3 className="section-title"><FaUser /> Thông Tin Khách Hàng</h3>
+            <div className="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+              <h3 className="section-title mb-0"><FaUser /> Thông Tin Khách Hàng</h3>
+              {customerInfo.fullName && (
+                <span className="badge bg-success-subtle text-success border border-success-subtle px-2 py-1" style={{ fontSize: "12px", fontWeight: "normal" }}>
+                  ✓ Đã tự động điền từ tài khoản (bạn có thể thay đổi)
+                </span>
+              )}
+            </div>
             <div className="form-grid">
               <div className="form-group">
                 <label>Họ và tên *</label>
@@ -407,7 +470,14 @@ const CheckoutPage = () => {
 
           {/* Địa chỉ giao hàng */}
           <div className="checkout-section">
-            <h3 className="section-title"><FaMapMarkerAlt /> Địa Chỉ Giao Hàng</h3>
+            <div className="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+              <h3 className="section-title mb-0"><FaMapMarkerAlt /> Địa Chỉ Giao Hàng</h3>
+              {customerInfo.address && (
+                <span className="text-muted small" style={{ fontSize: "12px" }}>
+                  (Bạn có thể thay đổi nếu muốn giao đến địa chỉ khác)
+                </span>
+              )}
+            </div>
             <div className="form-group">
               <label>Địa chỉ *</label>
               <textarea name="address" value={customerInfo.address}
@@ -479,7 +549,19 @@ const CheckoutPage = () => {
                   <span>-{formatPrice(discountAmount)}</span>
                 </div>
               )}
-              <div className="summary-row"><span>Phí vận chuyển:</span><span>{appliedCoupon?.discountType === 'SHIPPING' ? 'Miễn phí (Đã áp voucher)' : 'Miễn phí'}</span></div>
+              <div className="summary-row">
+                <span>Phí vận chuyển:</span>
+                <span>
+                  {shippingFee === 0 ? (
+                    <>
+                      <s className="text-muted me-1">{formatPrice(30000)}</s>
+                      <span className="text-success fw-bold">Miễn phí (Freeship)</span>
+                    </>
+                  ) : (
+                    <span className="fw-bold text-dark">{formatPrice(shippingFee ?? 30000)}</span>
+                  )}
+                </span>
+              </div>
               <div className="summary-total"><span>Tổng thanh toán:</span><span className="text-warning fs-4">{formatPrice(finalPrice)}</span></div>
             </div>
           </div>

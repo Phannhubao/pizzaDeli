@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Modal, Button, Table, Badge, Spinner } from "react-bootstrap";
 import { FaPhoneAlt, FaMapMarkerAlt, FaUser, FaMoneyBillWave, FaReceipt, FaPrint, FaCheck, FaTimes, FaPizzaSlice } from "react-icons/fa";
+import Swal from "sweetalert2";
 import { GetDetailListByOrder } from "../../../../../services/ApiService";
 
 export default function AdminOrderDetailModal({ show, onHide, order, onStatusChange }) {
@@ -40,6 +41,8 @@ export default function AdminOrderDetailModal({ show, onHide, order, onStatusCha
         return <Badge bg="warning" text="dark" className="px-3 py-2 fs-6">⏳ Chờ xác nhận</Badge>;
       case "PROCESSING":
         return <Badge bg="primary" className="px-3 py-2 fs-6">👨‍🍳 Đang xử lý / Nấu</Badge>;
+      case "SHIPPING":
+        return <Badge bg="info" className="px-3 py-2 fs-6 text-white">🛵 Đang giao hàng</Badge>;
       case "COMPLETED":
         return <Badge bg="success" className="px-3 py-2 fs-6">✅ Đã hoàn thành</Badge>;
       case "CANCELLED":
@@ -54,6 +57,13 @@ export default function AdminOrderDetailModal({ show, onHide, order, onStatusCha
   };
 
   const handleQuickStatus = async (newStatus) => {
+    if (order.status === "COMPLETED" || order.status === "CANCELLED") {
+      return Swal.fire({
+        icon: "warning",
+        title: "Không thể thay đổi",
+        text: `Đơn hàng đã ${order.status === "COMPLETED" ? "hoàn thành" : "bị hủy"}, không thể thay đổi trạng thái nữa!`
+      });
+    }
     setUpdatingStatus(true);
     try {
       await onStatusChange(order.id, newStatus);
@@ -230,37 +240,60 @@ export default function AdminOrderDetailModal({ show, onHide, order, onStatusCha
         </Button>
 
         <div className="d-flex align-items-center gap-2">
-          {order.status !== "COMPLETED" && (
-            <Button
-              variant="success"
-              onClick={() => handleQuickStatus("COMPLETED")}
-              disabled={updatingStatus}
-              className="d-flex align-items-center gap-1"
-            >
-              <FaCheck /> Hoàn Thành Đơn
-            </Button>
+          {order.status === "COMPLETED" && (
+            <Badge bg="success" className="px-3 py-2 fs-6">
+              ✓ Đơn hàng đã hoàn tất (Đã khóa trạng thái)
+            </Badge>
           )}
 
-          {order.status === "PENDING" && (
-            <Button
-              variant="primary"
-              onClick={() => handleQuickStatus("PROCESSING")}
-              disabled={updatingStatus}
-              className="d-flex align-items-center gap-1"
-            >
-              👩‍🍳 Bắt Đầu Chế Biến
-            </Button>
+          {order.status === "CANCELLED" && (
+            <Badge bg="danger" className="px-3 py-2 fs-6">
+              ✕ Đơn hàng đã bị hủy (Đã khóa trạng thái)
+            </Badge>
           )}
 
-          {order.status !== "CANCELLED" && order.status !== "COMPLETED" && (
-            <Button
-              variant="outline-danger"
-              onClick={() => handleQuickStatus("CANCELLED")}
-              disabled={updatingStatus}
-              className="d-flex align-items-center gap-1"
-            >
-              <FaTimes /> Hủy Đơn
-            </Button>
+          {order.status !== "COMPLETED" && order.status !== "CANCELLED" && (
+            <>
+              {order.status === "PENDING" && (
+                <Button
+                  variant="primary"
+                  onClick={() => handleQuickStatus("PROCESSING")}
+                  disabled={updatingStatus}
+                  className="d-flex align-items-center gap-1"
+                >
+                  👩‍🍳 Bắt Đầu Chế Biến
+                </Button>
+              )}
+
+              {order.status === "PROCESSING" && (
+                <Button
+                  variant="info"
+                  className="text-white d-flex align-items-center gap-1"
+                  onClick={() => handleQuickStatus("SHIPPING")}
+                  disabled={updatingStatus}
+                >
+                  🛵 Bắt Đầu Giao Hàng
+                </Button>
+              )}
+
+              <Button
+                variant="success"
+                onClick={() => handleQuickStatus("COMPLETED")}
+                disabled={updatingStatus}
+                className="d-flex align-items-center gap-1"
+              >
+                <FaCheck /> Hoàn Thành Đơn
+              </Button>
+
+              <Button
+                variant="outline-danger"
+                onClick={() => handleQuickStatus("CANCELLED")}
+                disabled={updatingStatus}
+                className="d-flex align-items-center gap-1"
+              >
+                <FaTimes /> Hủy Đơn
+              </Button>
+            </>
           )}
 
           <Button variant="secondary" onClick={onHide}>

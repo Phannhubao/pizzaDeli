@@ -3,6 +3,7 @@ import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import "../../css/menu.css";
 import { Domain } from "../../services/Domain";
+import RAGMenuAssistant from "./RAGMenuAssistant";
 
 const Menu = () => {
   const [categories, setCategories] = useState([]);
@@ -26,18 +27,21 @@ const Menu = () => {
   };
 
   return (
-    <div className="container text-center menu1">
-      <div className="row">
-        {categories.map((category) => (
-          <div 
-            className="col" 
-            key={category.categoryId}
-            onClick={() => handleCategoryClick(category.categoryId)}
-            style={{ cursor: "pointer" }} // Thêm hiệu ứng con trỏ
-          >
-            <div className="menu-title">{category.categoryName}</div>
-          </div>
-        ))}
+    <div className="container py-4">
+      <div className="text-center menu1 mt-4">
+        <h4 className="mb-3 text-white fw-bold">Danh Mục Thực Đơn</h4>
+        <div className="row">
+          {categories.map((category) => (
+            <div 
+              className="col" 
+              key={category.categoryId}
+              onClick={() => handleCategoryClick(category.categoryId)}
+              style={{ cursor: "pointer" }}
+            >
+              <div className="menu-title">{category.categoryName}</div>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

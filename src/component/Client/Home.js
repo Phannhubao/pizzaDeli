@@ -53,7 +53,8 @@ function Home() {
         // Products
         let prodList = [];
         if (prodRes.status === "fulfilled" && prodRes.value?.data) {
-          prodList = Array.isArray(prodRes.value.data) ? prodRes.value.data : [];
+          const rawProds = Array.isArray(prodRes.value.data) ? prodRes.value.data : [];
+          prodList = rawProds.filter((p) => p.active);
         }
 
         // Fetch images for each product

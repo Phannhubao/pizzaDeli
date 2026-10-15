@@ -25,8 +25,9 @@ const ProductList = () => {
         setError(null);
 
         const response = await GetProductList();
-        const productsData = Array.isArray(response.data) ? response.data : [];
-        console.log("Raw products data from API:", productsData);
+        const rawProducts = Array.isArray(response.data) ? response.data : [];
+        const productsData = rawProducts.filter((product) => product.active);
+        console.log("Active products data from API:", productsData);
 
         // Lọc theo categoryId nếu có
         const filteredProducts = categoryId

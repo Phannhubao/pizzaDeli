@@ -94,13 +94,14 @@ export default function OrderManager() {
     const total = orders.length;
     const pending = orders.filter((o) => o.status === "PENDING").length;
     const processing = orders.filter((o) => o.status === "PROCESSING").length;
+    const shipping = orders.filter((o) => o.status === "SHIPPING").length;
     const completed = orders.filter((o) => o.status === "COMPLETED").length;
     const cancelled = orders.filter((o) => o.status === "CANCELLED").length;
     const revenue = orders
       .filter((o) => o.status === "COMPLETED")
       .reduce((sum, o) => sum + (Number(o.totalPrice) || 0), 0);
 
-    return { total, pending, processing, completed, cancelled, revenue };
+    return { total, pending, processing, shipping, completed, cancelled, revenue };
   }, [orders]);
 
   // Filter orders
@@ -144,6 +145,8 @@ export default function OrderManager() {
     switch (status) {
       case "PROCESSING":
         return <span className="custom-badge badge-processing">👨‍🍳 Đang xử lý</span>;
+      case "SHIPPING":
+        return <span className="custom-badge badge-shipping" style={{ background: "#ec4899", color: "#fff" }}>🛵 Đang giao</span>;
       case "PENDING":
         return <span className="custom-badge badge-pending">⏳ Chờ duyệt</span>;
       case "COMPLETED":
@@ -164,9 +167,20 @@ export default function OrderManager() {
       });
     }
 
+    const currentOrder = orders.find((o) => Number(o.id) === Number(orderId) || Number(o.orderId) === Number(orderId));
+    if (currentOrder && (currentOrder.status === "COMPLETED" || currentOrder.status === "CANCELLED")) {
+      return Swal.fire({
+        icon: "warning",
+        title: "Không thể thay đổi",
+        text: `Đơn hàng #${orderId} đã ${currentOrder.status === "COMPLETED" ? "HOÀN THÀNH" : "BỊ HỦY"}, không thể thay đổi trạng thái nữa!`,
+        confirmButtonColor: "#f97316"
+      });
+    }
+
     const statusNames = {
       PENDING: "Chờ xác nhận",
       PROCESSING: "Đang xử lý / Chế biến",
+      SHIPPING: "Đang giao hàng",
       COMPLETED: "Đã hoàn thành",
       CANCELLED: "Hủy đơn hàng"
     };
@@ -340,7 +354,13 @@ export default function OrderManager() {
               className={`status-tab-btn tab-processing ${statusFilter === "PROCESSING" ? "active" : ""}`}
               onClick={() => setStatusFilter("PROCESSING")}
             >
-              Đang xử lý <span className="tab-counter">{stats.processing}</span>
+              Đang nấu <span className="tab-counter">{stats.processing}</span>
+            </button>
+            <button
+              className={`status-tab-btn tab-shipping ${statusFilter === "SHIPPING" ? "active" : ""}`}
+              onClick={() => setStatusFilter("SHIPPING")}
+            >
+              Đang giao <span className="tab-counter">{stats.shipping}</span>
             </button>
             <button
               className={`status-tab-btn tab-completed ${statusFilter === "COMPLETED" ? "active" : ""}`}
@@ -496,10 +516,22 @@ export default function OrderManager() {
                             value={item.status}
                             onChange={(e) => handleStatusChange(item.id, e.target.value)}
                             className="form-select form-select-sm py-1 status-select-quick"
-                            style={{ width: "125px", fontSize: "12px" }}
+                            style={{
+                              width: "125px",
+                              fontSize: "12px",
+                              opacity: item.status === "COMPLETED" || item.status === "CANCELLED" ? 0.65 : 1,
+                              cursor: item.status === "COMPLETED" || item.status === "CANCELLED" ? "not-allowed" : "pointer"
+                            }}
+                            disabled={item.status === "COMPLETED" || item.status === "CANCELLED"}
+                            title={
+                              item.status === "COMPLETED" || item.status === "CANCELLED"
+                                ? "Đơn hàng đã kết thúc, không thể thay đổi trạng thái"
+                                : "Thay đổi trạng thái"
+                            }
                           >
                             <option value="PENDING">Chờ duyệt</option>
                             <option value="PROCESSING">Đang nấu</option>
+                            <option value="SHIPPING">Đang giao</option>
                             <option value="COMPLETED">Hoàn thành</option>
                             <option value="CANCELLED">Hủy đơn</option>
                           </select>

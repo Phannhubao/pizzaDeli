@@ -32,6 +32,7 @@ import OrderManager from "./component/Admin/AdminPages/Pages/Order/OrderManager"
 import CheckoutPage from "./component/Client/CheckoutPage";
 import ProfilePage from "./component/Client/ProfilePage";
 import VNPayReturn from './component/Client/VNPayReturn';
+import RAGMenuAssistant from "./component/Client/RAGMenuAssistant";
 
 import ScrollToTop from "./ScrollToTop";
 
@@ -53,6 +54,8 @@ function App() {
                       <Route path="/" element={<Home />} />
                       <Route path="/contact" element={<Contact />} />
                       <Route path="/product/:id" element={<ProductDetail />} />
+                      <Route path="/products/ProductDetail/:id" element={<ProductDetail />} />
+                      <Route path="/products/:id" element={<ProductDetail />} />
                       <Route path="/about" element={<About />} />
                       <Route path="/signup" element={<Signup />} />
                       <Route path="/login" element={<LoginPage />} />
@@ -65,6 +68,8 @@ function App() {
                     </Routes>
                   </main>
                   <Footer />
+                  {/* 🍕 Nút Chatbot AI Đề xuất thực đơn cá nhân hóa (Mở ra / Mở vô) */}
+                  <RAGMenuAssistant />
                 </>
               }
             />

@@ -16,6 +16,7 @@ const CartPage = () => {
     totalPrice,
     appliedCoupon,
     discountAmount,
+    shippingFee,
     finalPrice,
     applyCoupon,
     removeCoupon,
@@ -267,7 +268,16 @@ const CartPage = () => {
 
                 <div className="summary-row">
                   <span>Phí giao hàng:</span>
-                  <span>{appliedCoupon?.discountType === 'SHIPPING' ? <s className="text-muted">{formatPrice(30000)}</s> : formatPrice(0)}</span>
+                  <span>
+                    {shippingFee === 0 ? (
+                      <>
+                        <s className="text-muted me-1">{formatPrice(30000)}</s>
+                        <span className="text-success fw-bold">0 đ (Freeship)</span>
+                      </>
+                    ) : (
+                      <span className="fw-bold text-dark">{formatPrice(shippingFee ?? 30000)}</span>
+                    )}
+                  </span>
                 </div>
 
                 <div className="summary-total">
