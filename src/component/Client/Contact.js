@@ -158,7 +158,7 @@ const ContactPage = () => {
       <section 
         className="contact-hero"
         style={{
-          backgroundImage: 'linear-gradient(135deg, rgba(15, 23, 42, 0.92) 0%, rgba(30, 41, 59, 0.88) 100%), url(/img/banner2.jpg)'
+          backgroundImage: 'linear-gradient(135deg, rgba(15, 23, 42, 0.92) 0%, rgba(30, 41, 59, 0.88) 100%), url(/img/banner2.png)'
         }}
       >
         <div className="contact-hero-inner">

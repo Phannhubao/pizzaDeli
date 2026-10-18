@@ -16,7 +16,7 @@ function Banner() {
         {/* Slide 1 */}
         <Carousel.Item>
           <div className="hero-slide-wrapper">
-            <img src="/img/banner1.jpg" alt="Pizza Nướng Củi" className="hero-slide-img" />
+            <img src="/img/banner1.png" alt="Pizza Nướng Củi" className="hero-slide-img" />
             <div className="hero-slide-overlay">
               <div className="hero-content-box">
                 <span className="hero-badge-tag">
@@ -52,7 +52,7 @@ function Banner() {
         {/* Slide 2 */}
         <Carousel.Item>
           <div className="hero-slide-wrapper">
-            <img src="/img/banner2.jpg" alt="Siêu Ưu Đãi" className="hero-slide-img" />
+            <img src="/img/banner2.png" alt="Siêu Ưu Đãi" className="hero-slide-img" />
             <div className="hero-slide-overlay">
               <div className="hero-content-box">
                 <span className="hero-badge-tag">
@@ -88,7 +88,7 @@ function Banner() {
         {/* Slide 3 */}
         <Carousel.Item>
           <div className="hero-slide-wrapper">
-            <img src="/img/banner3.jpg" alt="Giao Hàng Siêu Tốc" className="hero-slide-img" />
+            <img src="/img/banner3.png" alt="Giao Hàng Siêu Tốc" className="hero-slide-img" />
             <div className="hero-slide-overlay">
               <div className="hero-content-box">
                 <span className="hero-badge-tag">

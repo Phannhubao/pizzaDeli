@@ -31,7 +31,7 @@ import {
 import Swal from "sweetalert2";
 import html2pdf from "html2pdf.js/dist/html2pdf.bundle.min.js";
 import { useNavigate } from "react-router-dom";
-import { GetUserByID, PutUser, GetOrdersByUserID, GetDetailListByOrder } from "../../services/ApiService";
+import { GetUserByID, PutUser, GetOrdersByUserID, GetDetailListByOrder, GetPaymentList } from "../../services/ApiService";
 import { normalizeImagePath } from "../../context/CartContext";
 import "../../css/profile.css";
 
@@ -78,10 +78,29 @@ const ProfilePage = () => {
           address: u?.address || ""
         });
 
-        const ordersRes = await GetOrdersByUserID(userId);
+        const [ordersRes, paymentRes] = await Promise.all([
+          GetOrdersByUserID(userId),
+          GetPaymentList().catch(() => ({ data: [] }))
+        ]);
+
         const orderList = Array.isArray(ordersRes) ? ordersRes : (ordersRes?.data || []);
+        const paymentList = Array.isArray(paymentRes?.data) ? paymentRes.data : Array.isArray(paymentRes) ? paymentRes : [];
+
+        // Map phương thức thanh toán vào đơn hàng
+        const mappedOrders = orderList.map((order) => {
+          const oId = order.id || order.orderId;
+          const payment = paymentList.find((p) => p.orderId === oId || p.orderPayment?.orderId === oId);
+          const isPaidOnline = payment?.Status === true || payment?.status === true;
+
+          return {
+            ...order,
+            hasPaidOnline: isPaidOnline,
+            paymentMethod: isPaidOnline ? "VNPay Online" : "COD"
+          };
+        });
+
         // Sắp xếp đơn hàng mới nhất lên đầu
-        const sorted = [...orderList].sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+        const sorted = [...mappedOrders].sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
         setOrders(sorted);
       } catch (err) {
         console.error("Lỗi khi tải dữ liệu profile:", err);
@@ -846,8 +865,8 @@ const ProfilePage = () => {
                       <div className="text-secondary small mt-2">Trạng thái & Thanh toán:</div>
                       <div className="d-flex align-items-center gap-2 mt-1">
                         {getStatusBadge(selectedOrder.status)}
-                        <span className="badge bg-light text-dark border">
-                          {selectedOrder.paymentMethod || "COD"}
+                        <span className={`badge ${selectedOrder.hasPaidOnline || selectedOrder.paymentMethod === "VNPay Online" ? "bg-primary-subtle text-primary border border-primary-subtle" : "bg-light text-dark border"}`}>
+                          {selectedOrder.hasPaidOnline || selectedOrder.paymentMethod === "VNPay Online" ? "💳 VNPay Online" : "🚚 Tiền mặt (COD)"}
                         </span>
                       </div>
                     </Col>
