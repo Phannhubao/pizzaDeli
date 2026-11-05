@@ -20,7 +20,6 @@ const RegisterPage = () => {
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
 
-  // Xử lý input change
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
@@ -32,11 +31,9 @@ const RegisterPage = () => {
     }
   };
 
-  // Validate dữ liệu nhập (dùng useCallback để ổn định)
   const validateForm = useCallback(() => {
     const newErrors = {};
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    // const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/;
     const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[!@#$%^&*])[A-Za-z\d!@#$%^&*]{8,}$/;
     if (!formData.name.trim()) newErrors.name = "Vui lòng nhập họ tên";
     if (!formData.email.trim()) newErrors.email = "Vui lòng nhập email";
@@ -58,7 +55,6 @@ const RegisterPage = () => {
     return Object.keys(newErrors).length === 0;
   }, [formData]);
 
-  // Xử lý submit
   const handleSubmit = useCallback(
     async (e) => {
       e.preventDefault();
@@ -73,7 +69,7 @@ const RegisterPage = () => {
           birthDate: formData.birthDate,
           password: formData.password,
           status: "ACTIVE",
-          role: "CUSTOMER", // mặc định
+          role: "CUSTOMER",
         };
 
         console.log("👉 Dữ liệu gửi:", newData);
@@ -89,7 +85,6 @@ const RegisterPage = () => {
             showConfirmButton: false,
           });
 
-          // Reset form
           setFormData({
             name: "",
             email: "",
@@ -105,10 +100,6 @@ const RegisterPage = () => {
         }
       } catch (err) {
         console.error("Email đã được sử dụng");
-        // const errorMessage =
-        //   err.response?.data?.message ||
-        //   err.message ||
-        //   "Đăng ký thất bại, vui lòng thử lại!";
         Swal.fire({
           icon: "error",
           title: "Lỗi",
